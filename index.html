@@ -11,10 +11,16 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
 </head>
 <body class="dark-theme">
-  <div class="app-container">
-    <aside class="sidebar">
-      <div class="logo">
+  <div class="app-container" id="appContainer">
+    <button id="showSidebarBtn" style="position: fixed; left: 1rem; top: 1rem; z-index: 100; background: var(--bg-sidebar); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); cursor: pointer; display: none; align-items: center; justify-content: center; width: 40px; height: 40px; backdrop-filter: blur(16px); transition: background 0.2s;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+    </button>
+    <aside class="sidebar" id="sidebar">
+      <div class="logo" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
         <h1>Trainer<span>Expert</span></h1>
+        <button id="toggleSidebarBtn" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0.25rem; transition: color 0.2s;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
       </div>
       <nav class="nav-menu">
         <button class="nav-item active" data-tab="dashboard">

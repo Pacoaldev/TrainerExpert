@@ -32,6 +32,11 @@ body.dark-theme {
   height: 100vh;
   background: radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
               radial-gradient(circle at 10% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 50%);
+  transition: grid-template-columns 0.3s ease;
+}
+
+.app-container.sidebar-hidden {
+  grid-template-columns: 0px 1fr;
 }
 
 /* Sidebar */
@@ -44,6 +49,16 @@ body.dark-theme {
   flex-direction: column;
   gap: 2rem;
   overflow-y: auto;
+  transition: transform 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+  transform-origin: left;
+}
+
+.sidebar.hidden {
+  transform: scaleX(0);
+  opacity: 0;
+  padding: 2rem 0;
+  pointer-events: none;
+  border-right: none;
 }
 
 .logo h1 {

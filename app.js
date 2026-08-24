@@ -601,6 +601,29 @@ function updateUI() {
   }
 }
 
+// Sidebar toggle functionality
+const sidebarEl = document.getElementById('sidebar');
+const appContainerEl = document.getElementById('appContainer');
+const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
+const showSidebarBtn = document.getElementById('showSidebarBtn');
+
+function hideSidebar() {
+  sidebarEl.classList.add('hidden');
+  appContainerEl.classList.add('sidebar-hidden');
+  showSidebarBtn.style.display = 'flex';
+}
+
+function showSidebar() {
+  sidebarEl.classList.remove('hidden');
+  appContainerEl.classList.remove('sidebar-hidden');
+  showSidebarBtn.style.display = 'none';
+}
+
+if (toggleSidebarBtn && showSidebarBtn) {
+  toggleSidebarBtn.addEventListener('click', hideSidebar);
+  showSidebarBtn.addEventListener('click', showSidebar);
+}
+
 // Initial setup
 async function initApp() {
   await loadEnvKeys();
