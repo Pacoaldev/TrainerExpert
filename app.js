@@ -390,7 +390,7 @@ async function sendMessageWithFallback(text) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "meta-llama/llama-3-8b-instruct:free",
+          model: "openrouter/free",
           messages: [
             { role: "system", content: activeSystemPrompt },
             ...chatHistory
@@ -410,7 +410,7 @@ async function sendMessageWithFallback(text) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "meta/llama3-8b-instruct",
+          model: "meta/llama-3.1-8b-instruct",
           messages: [
             { role: "system", content: activeSystemPrompt },
             ...chatHistory
@@ -466,8 +466,8 @@ endInterviewBtn.addEventListener('click', async () => {
         ? "https://openrouter.ai/api/v1/chat/completions" 
         : "https://integrate.api.nvidia.com/v1/chat/completions";
       const model = activeProvider === 'openrouter' 
-        ? "meta-llama/llama-3-8b-instruct:free" 
-        : "meta/llama3-8b-instruct";
+        ? "openrouter/free" 
+        : "meta/llama-3.1-8b-instruct";
       
       const response = await fetch(url, {
         method: "POST",
