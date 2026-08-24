@@ -29,6 +29,17 @@ const candidateProfileInput = document.getElementById('candidateProfile');
 const interviewerProfileInput = document.getElementById('interviewerProfile');
 const handbookPathInput = document.getElementById('handbookPath');
 const loadHandbookPathBtn = document.getElementById('loadHandbookPathBtn');
+const shutdownBtn = document.getElementById('shutdownBtn');
+
+shutdownBtn.addEventListener('click', async () => {
+  if (confirm('¿Estás seguro de que deseas cerrar la aplicación?')) {
+    try {
+      await fetch('./api/shutdown', { method: 'POST' });
+    } catch (e) {
+      console.error('Error apagando:', e);
+    }
+  }
+});
 
 // Initialize settings
 apiProviderSelect.value = activeProvider;
