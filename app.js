@@ -306,6 +306,44 @@ function buildSystemPrompt(scenarioName) {
   `;
 }
 
+function getInterviewerData(profileText) {
+  const info = {
+    name: 'Tech Lead',
+    role: 'Backend Tech Lead',
+    stack: 'Laravel',
+    domain: 'SaaS B2B'
+  };
+
+  if (!profileText) return info;
+
+  const nameMatch = profileText.match(/\|\s*Nombre\s*\|\s*([^|]+)\|/i);
+  if (nameMatch) {
+    info.name = nameMatch[1].trim();
+  } else {
+    const firstLineMatch = profileText.match(/#\s*(?:Perfil de entrevistador:)?\s*(.+)/i);
+    if (firstLineMatch) {
+      info.name = firstLineMatch[1].trim();
+    }
+  }
+
+  const roleMatch = profileText.match(/\|\s*Rol\s*\|\s*([^|]+)\|/i);
+  if (roleMatch) {
+    info.role = roleMatch[1].trim();
+  }
+
+  const stackMatch = profileText.match(/\|\s*Stack del equipo\s*\|\s*([^|]+)\|/i);
+  if (stackMatch) {
+    info.stack = stackMatch[1].split('·')[0].trim();
+  }
+
+  const domainMatch = profileText.match(/\|\s*Dominio\s*\|\s*([^|]+)\|/i);
+  if (domainMatch) {
+    info.domain = domainMatch[1].replace(/\*\*/g, '').trim();
+  }
+
+  return info;
+}
+
 // AI Interview Logic
 async function startInterview(scenarioName = '') {
   const key = getActiveKey();
@@ -320,11 +358,13 @@ async function startInterview(scenarioName = '') {
   activeSystemPrompt = buildSystemPrompt(scenarioName);
   chatHistory = [];
 
+  const interviewer = getInterviewerData(interviewerProfileInput.value);
+
   let greeting = '';
   if (scenarioName) {
-    greeting = `Hola, soy Tech Lead. Vamos a iniciar el caso práctico sobre: **${scenarioName}**. ¿Cómo lo plantearías inicialmente?`;
+    greeting = `Hola, soy ${interviewer.name}. Vamos a iniciar el caso práctico sobre: **${scenarioName}**. ¿Cómo lo plantearías inicialmente?`;
   } else {
-    greeting = `Hola, soy Tech Lead, Backend Tech Lead. Vamos a hacer una entrevista técnica de unos 45–60 minutos: me interesa cómo razonas problemas reales de backend en un producto SaaS B2B, no memorizar Laravel. Empezamos con una presentación breve de tu experiencia y después planteamos un caso. ¿Te parece?`;
+    greeting = `Hola, soy ${interviewer.name}, ${interviewer.role}. Vamos a hacer una entrevista técnica de unos 45–60 minutos: me interesa cómo razonas problemas reales de backend en un producto ${interviewer.domain}, no memorizar ${interviewer.stack}. Empezamos con una presentación breve de tu experiencia y después planteamos un caso. ¿Te parece?`;
   }
 
   if (activeProvider === 'gemini') {
