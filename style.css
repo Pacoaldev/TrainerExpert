@@ -198,6 +198,11 @@ body.dark-theme {
   padding: 2rem 3rem;
   overflow-y: auto;
   height: 100vh;
+  transition: padding-left 0.3s ease;
+}
+
+.app-container.sidebar-hidden .main-content {
+  padding-left: 5rem;
 }
 
 .tab-content {
