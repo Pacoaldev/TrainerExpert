@@ -61,9 +61,13 @@ apiProviderSelect.addEventListener('change', (e) => {
   loadEnvKeys();
 });
 
-// Load API keys from .env and local storage
 async function loadEnvKeys() {
   apiKeys = [];
+  const keyPrefix = 
+    activeProvider === 'openrouter' ? 'OPENROUTER_API_KEYS=' :
+    activeProvider === 'nvidia' ? 'NVIDIA_API_KEYS=' :
+    'GEMINI_API_KEYS=';
+
   try {
     const response = await fetch('./.env');
     if (response.ok) {
@@ -71,7 +75,7 @@ async function loadEnvKeys() {
       const lines = text.split('\n').map(l => l.trim()).filter(l => l);
       let collecting = false;
       for (let line of lines) {
-        if (line.startsWith('GEMINI_API_KEYS=')) {
+        if (line.startsWith(keyPrefix)) {
           collecting = true;
           const val = line.substring(line.indexOf('=') + 1).trim();
           if (val) {
@@ -88,7 +92,7 @@ async function loadEnvKeys() {
           }
         }
       }
-      console.log(`Cargadas ${apiKeys.length} claves API desde .env`);
+      console.log(`Cargadas ${apiKeys.length} claves API para ${activeProvider} desde .env`);
     }
   } catch (e) {
     console.log('No se pudo cargar el archivo .env automáticamente:', e);
