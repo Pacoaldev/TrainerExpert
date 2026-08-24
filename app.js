@@ -298,7 +298,11 @@ function buildSystemPrompt(scenarioName) {
     2. No evalúes sintaxis de memoria, busca razonamiento técnico, evaluación de trade-offs y pensamiento en voz alta.
     3. Plantea problemas progresivos, y luego repregunta escalando el volumen o introduciendo fallos.
     4. Sé fiel al perfil del entrevistador especificado.
-    5. Importante: Mantén tus respuestas conversacionales y cortas. Máximo 2-3 párrafos por turno para facilitar el intercambio fluido.
+    5. IMPORTANTE - FORMATO DE RESPUESTA:
+       - No respondas nunca con un único bloque o párrafo continuo de texto.
+       - Usa obligatoriamente párrafos separados por dos saltos de línea (doble newline '\n\n') para cada idea.
+       - Si vas a listar puntos fuertes, áreas de mejora o detalles, utiliza listas con guiones y saltos de línea claros (por ejemplo: - **Concepto**: Explicación).
+       - Mantén tus respuestas conversacionales pero muy estructuradas visualmente.
   `;
 }
 
