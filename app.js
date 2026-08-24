@@ -87,6 +87,9 @@ async function loadEnvKeys() {
   
   currentKeyIndex = 0;
   updateUI();
+  if (apiKeys.length > 0) {
+    startInterview();
+  }
 }
 
 function getActiveKey() {
@@ -284,10 +287,10 @@ function buildSystemPrompt(scenarioName) {
 // AI Interview Logic
 async function startInterview(scenarioName = '') {
   const key = getActiveKey();
-  if (!key) {
-    alert('Introduce tu Gemini API Key o configura un archivo .env.');
-    return;
-  }
+  if (!key) return;
+
+  // Don't override if already interviewing, unless a specific scenario is chosen
+  if (chatSession && !scenarioName) return;
 
   document.querySelector('[data-tab="interview"]').click();
   chatMessages.innerHTML = `<div class="message assistant"><div class="message-bubble">Iniciando simulación con el Tech Lead...</div></div>`;
@@ -303,13 +306,17 @@ async function startInterview(scenarioName = '') {
     });
 
     chatSession = model.startChat({ history: [] });
+    updateUI();
     
-    const response = await chatSession.sendMessage('Hola, estoy listo para iniciar la entrevista.');
+    let greeting = '';
+    if (scenarioName) {
+      greeting = `Hola, soy Tech Lead. Vamos a iniciar el caso práctico sobre: **${scenarioName}**. ¿Cómo lo plantearías inicialmente?`;
+    } else {
+      greeting = `Hola, soy Tech Lead, Backend Tech Lead. Vamos a hacer una entrevista técnica de unos 45–60 minutos: me interesa cómo razonas problemas reales de backend en un producto SaaS B2B, no memorizar Laravel. Empezamos con una presentación breve de tu experiencia y después planteamos un caso. ¿Te parece?`;
+    }
+    
     chatMessages.innerHTML = '';
-    appendMessage('assistant', response.response.text());
-    
-    chatInput.disabled = false;
-    sendBtn.disabled = false;
+    appendMessage('assistant', greeting);
   } catch (error) {
     if (rotateApiKey()) {
       await startInterview(scenarioName);
@@ -467,11 +474,23 @@ function updateUI() {
   }
 
   if (key) {
-    chatInput.disabled = false;
-    sendBtn.disabled = false;
+    if (chatSession) {
+      chatInput.disabled = false;
+      sendBtn.disabled = false;
+      chatInput.placeholder = "Escribe tu respuesta pensando en voz alta...";
+    } else {
+      chatInput.disabled = true;
+      sendBtn.disabled = true;
+      chatInput.placeholder = "Selecciona un caso práctico en el Inicio para comenzar...";
+    }
+    const welcomeBubble = document.querySelector('#chatMessages .message.assistant:first-child .message-bubble');
+    if (welcomeBubble && welcomeBubble.textContent.includes('introduce tu Gemini API Key')) {
+      welcomeBubble.textContent = '¡Hola! Bienvenido. Las claves de API se han cargado correctamente. Selecciona un caso práctico en el Inicio para comenzar la entrevista.';
+    }
   } else {
     chatInput.disabled = true;
     sendBtn.disabled = true;
+    chatInput.placeholder = "Introduce tu Gemini API Key en la barra lateral para empezar...";
   }
 }
 
@@ -482,6 +501,9 @@ async function initApp() {
   await loadDefaultHandbook();
   renderScenarios();
   loadDrill();
+  if (getActiveKey()) {
+    startInterview();
+  }
 }
 
 initApp();
