@@ -36,7 +36,7 @@
         <div class="form-group">
           <label for="apiKey">Gemini API Key (Cargada de .env / Manual)</label>
           <input type="password" id="apiKey" placeholder="AIzaSy... (o vacío para usar .env)" autocomplete="off">
-          <span class="help-text">Se usarán las llaves del archivo .env por defecto.</span>
+          <span class="help-text" id="apiKeyHelp" style="color: var(--text-secondary);">Se usarán las llaves del archivo .env por defecto.</span>
         </div>
         <div class="form-group">
           <label for="handbookPath">Cargar desde /handbooks/</label>
@@ -47,15 +47,17 @@
           <label for="handbookUpload">O subir Handbook (.md, .txt, .pdf)</label>
           <div class="file-drop-zone">
             <input type="file" id="handbookUpload" accept=".md,.txt,.pdf">
-            <span class="file-name">Ninguno (Por defecto)</span>
+            <span class="file-name" id="uploadedFileName">Ninguno (Por defecto)</span>
           </div>
         </div>
         <div class="form-group">
           <label for="candidateProfile">Perfil Candidato (cargado de candidate.md)</label>
+          <div class="profile-status" id="candidateProfileStatus" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">No cargado</div>
           <textarea id="candidateProfile" placeholder="Contenido de candidate.md..." rows="3" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.5rem; font-size: 0.85rem; resize: none; outline: none;"></textarea>
         </div>
         <div class="form-group">
           <label for="interviewerProfile">Perfil Entrevistador (cargado de interviewer.md)</label>
+          <div class="profile-status" id="interviewerProfileStatus" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">No cargado</div>
           <textarea id="interviewerProfile" placeholder="Contenido de interviewer.md..." rows="3" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.5rem; font-size: 0.85rem; resize: none; outline: none;"></textarea>
         </div>
       </div>

@@ -41,12 +41,12 @@ interviewerProfileInput.value = localStorage.getItem('trainer_expert_interviewer
 
 candidateProfileInput.addEventListener('input', (e) => {
   localStorage.setItem('trainer_expert_candidate_profile', e.target.value);
+  updateUI();
 });
 
 interviewerProfileInput.addEventListener('input', (e) => {
   localStorage.setItem('trainer_expert_interviewer_profile', e.target.value);
-  const name = e.target.value.split('\n')[0].replace('#', '').trim() || 'Tech Lead';
-  document.getElementById('interviewerRole').textContent = name;
+  updateUI();
 });
 
 async function loadEnvKeys() {
@@ -425,6 +425,47 @@ document.getElementById('checkTechAnswerBtn').addEventListener('click', () => {
 // Update UI States
 function updateUI() {
   const key = getActiveKey();
+  
+  // API Keys Status
+  const apiKeyHelp = document.getElementById('apiKeyHelp');
+  if (apiKeys.length > 0) {
+    apiKeyHelp.textContent = `API cargada exitosamente desde archivo .env (${apiKeys.length} claves disponibles)`;
+    apiKeyHelp.style.color = 'var(--success)';
+  } else if (geminiApiKey) {
+    apiKeyHelp.textContent = 'API cargada manualmente';
+    apiKeyHelp.style.color = 'var(--success)';
+  } else {
+    apiKeyHelp.textContent = 'Introduce una clave manualmente o añade un archivo .env';
+    apiKeyHelp.style.color = 'var(--text-secondary)';
+  }
+
+  // Handbook Active States
+  activeHandbookTitle.textContent = activeHandbookName !== 'Ninguno' ? activeHandbookName : 'Sin Cargar';
+  document.getElementById('uploadedFileName').textContent = activeHandbookName;
+
+  // Profiles Status
+  const candidateStatus = document.getElementById('candidateProfileStatus');
+  if (candidateProfileInput.value.trim()) {
+    candidateStatus.textContent = '● Perfil activo (candidate.md)';
+    candidateStatus.style.color = 'var(--success)';
+  } else {
+    candidateStatus.textContent = 'No cargado';
+    candidateStatus.style.color = 'var(--text-secondary)';
+  }
+
+  const interviewerStatus = document.getElementById('interviewerProfileStatus');
+  if (interviewerProfileInput.value.trim()) {
+    const lines = interviewerProfileInput.value.split('\n');
+    const firstLine = lines.find(l => l.trim().startsWith('#')) || lines[0] || '';
+    const name = firstLine.replace('#', '').replace('Perfil de entrevistador:', '').replace('Perfil del Entrevistador:', '').trim() || 'Activo';
+    interviewerStatus.textContent = `● Perfil activo: ${name}`;
+    interviewerStatus.style.color = 'var(--success)';
+    document.getElementById('interviewerRole').textContent = name;
+  } else {
+    interviewerStatus.textContent = 'No cargado';
+    interviewerStatus.style.color = 'var(--text-secondary)';
+  }
+
   if (key) {
     chatInput.disabled = false;
     sendBtn.disabled = false;
