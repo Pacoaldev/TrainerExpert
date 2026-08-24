@@ -7,12 +7,15 @@ let activeHandbookName = 'Ninguno';
 let apiKeys = [];
 let currentKeyIndex = 0;
 let geminiApiKey = localStorage.getItem('trainer_expert_api_key') || '';
+let activeProvider = localStorage.getItem('trainer_expert_api_provider') || 'openrouter';
 let activeTab = 'dashboard';
 let chatSession = null;
+let chatHistory = [];
 let currentDrillIndex = 0;
 let activeSystemPrompt = '';
 
 // DOM Elements
+const apiProviderSelect = document.getElementById('apiProvider');
 const apiKeyInput = document.getElementById('apiKey');
 const handbookUpload = document.getElementById('handbookUpload');
 const activeHandbookTitle = document.getElementById('activeHandbookTitle');
@@ -27,6 +30,7 @@ const handbookPathInput = document.getElementById('handbookPath');
 const loadHandbookPathBtn = document.getElementById('loadHandbookPathBtn');
 
 // Initialize settings
+apiProviderSelect.value = activeProvider;
 if (geminiApiKey) {
   apiKeyInput.value = geminiApiKey;
 }
@@ -49,6 +53,15 @@ interviewerProfileInput.addEventListener('input', (e) => {
   updateUI();
 });
 
+apiProviderSelect.addEventListener('change', (e) => {
+  activeProvider = e.target.value;
+  localStorage.setItem('trainer_expert_api_provider', activeProvider);
+  chatSession = null;
+  chatHistory = [];
+  loadEnvKeys();
+});
+
+// Load API keys from .env and local storage
 async function loadEnvKeys() {
   apiKeys = [];
   try {
@@ -60,7 +73,7 @@ async function loadEnvKeys() {
       for (let line of lines) {
         if (line.startsWith('GEMINI_API_KEYS=')) {
           collecting = true;
-          const val = line.split('=')[1].trim();
+          const val = line.substring(line.indexOf('=') + 1).trim();
           if (val) {
             apiKeys = val.split(',').map(k => k.trim()).filter(k => k);
             collecting = false;
@@ -289,7 +302,6 @@ async function startInterview(scenarioName = '') {
   const key = getActiveKey();
   if (!key) return;
 
-  // Don't override if already interviewing, unless a specific scenario is chosen
   if (chatSession && !scenarioName) return;
 
   document.querySelector('[data-tab="interview"]').click();
@@ -297,32 +309,39 @@ async function startInterview(scenarioName = '') {
   endInterviewBtn.style.display = 'block';
 
   activeSystemPrompt = buildSystemPrompt(scenarioName);
+  chatHistory = [];
 
-  try {
-    const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      systemInstruction: activeSystemPrompt
-    });
+  let greeting = '';
+  if (scenarioName) {
+    greeting = `Hola, soy Tech Lead. Vamos a iniciar el caso práctico sobre: **${scenarioName}**. ¿Cómo lo plantearías inicialmente?`;
+  } else {
+    greeting = `Hola, soy Tech Lead, Backend Tech Lead. Vamos a hacer una entrevista técnica de unos 45–60 minutos: me interesa cómo razonas problemas reales de backend en un producto SaaS B2B, no memorizar Laravel. Empezamos con una presentación breve de tu experiencia y después planteamos un caso. ¿Te parece?`;
+  }
 
-    chatSession = model.startChat({ history: [] });
-    updateUI();
-    
-    let greeting = '';
-    if (scenarioName) {
-      greeting = `Hola, soy Tech Lead. Vamos a iniciar el caso práctico sobre: **${scenarioName}**. ¿Cómo lo plantearías inicialmente?`;
-    } else {
-      greeting = `Hola, soy Tech Lead, Backend Tech Lead. Vamos a hacer una entrevista técnica de unos 45–60 minutos: me interesa cómo razonas problemas reales de backend en un producto SaaS B2B, no memorizar Laravel. Empezamos con una presentación breve de tu experiencia y después planteamos un caso. ¿Te parece?`;
+  if (activeProvider === 'gemini') {
+    try {
+      const genAI = new GoogleGenerativeAI(key);
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-1.5-flash',
+        systemInstruction: activeSystemPrompt
+      });
+
+      chatSession = model.startChat({ history: [] });
+      updateUI();
+      chatMessages.innerHTML = '';
+      appendMessage('assistant', greeting);
+    } catch (error) {
+      if (rotateApiKey()) {
+        await startInterview(scenarioName);
+      } else {
+        chatMessages.innerHTML = `<div class="message assistant"><div class="message-bubble text-danger">Error: ${error.message} (Todas las claves fallaron)</div></div>`;
+      }
     }
-    
+  } else {
+    chatSession = { active: true };
+    updateUI();
     chatMessages.innerHTML = '';
     appendMessage('assistant', greeting);
-  } catch (error) {
-    if (rotateApiKey()) {
-      await startInterview(scenarioName);
-    } else {
-      chatMessages.innerHTML = `<div class="message assistant"><div class="message-bubble text-danger">Error: ${error.message} (Todas las claves fallaron)</div></div>`;
-    }
   }
 }
 
@@ -350,27 +369,66 @@ async function sendMessageWithFallback(text) {
   chatMessages.appendChild(loadingDiv);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 
+  chatHistory.push({ role: 'user', content: text });
+  const key = getActiveKey();
+
   try {
-    const response = await chatSession.sendMessage(text);
+    let replyText = '';
+    
+    if (activeProvider === 'gemini') {
+      const response = await chatSession.sendMessage(text);
+      replyText = response.response.text();
+    } else if (activeProvider === 'openrouter') {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${key}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "meta-llama/llama-3-8b-instruct:free",
+          messages: [
+            { role: "system", content: activeSystemPrompt },
+            ...chatHistory
+          ]
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+      const data = await response.json();
+      replyText = data.choices[0].message.content;
+    } else if (activeProvider === 'nvidia') {
+      const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${key}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "meta/llama3-8b-instruct",
+          messages: [
+            { role: "system", content: activeSystemPrompt },
+            ...chatHistory
+          ]
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+      const data = await response.json();
+      replyText = data.choices[0].message.content;
+    }
+
     loadingDiv.remove();
-    appendMessage('assistant', response.response.text());
+    chatHistory.push({ role: 'assistant', content: replyText });
+    appendMessage('assistant', replyText);
   } catch (error) {
     loadingDiv.remove();
+    chatHistory.pop();
     if (rotateApiKey()) {
       appendMessage('assistant', `[Rotación automática de clave API por fallo. Reintentando...]`);
-      // Re-initialize session
-      const key = getActiveKey();
-      try {
-        const genAI = new GoogleGenerativeAI(key);
-        const model = genAI.getGenerativeModel({
-          model: 'gemini-1.5-flash',
-          systemInstruction: activeSystemPrompt
-        });
-        chatSession = model.startChat({ history: [] });
-        await sendMessageWithFallback(text);
-      } catch (err) {
-        appendMessage('assistant', `Fallo en clave de respaldo: ${err.message}`);
-      }
+      await sendMessageWithFallback(text);
     } else {
       appendMessage('assistant', `Error: ${error.message}`);
     }
@@ -388,9 +446,47 @@ chatInput.addEventListener('keydown', (e) => {
 endInterviewBtn.addEventListener('click', async () => {
   if (!chatSession) return;
   appendMessage('assistant', 'Analizando desempeño final de la entrevista...');
+  
+  const text = 'Quiero terminar la entrevista. Hazme un resumen detallado de mi desempeño con puntos fuertes, áreas de mejora y una calificación estimada.';
+  chatHistory.push({ role: 'user', content: text });
+  const key = getActiveKey();
+
   try {
-    const response = await chatSession.sendMessage('Quiero terminar la entrevista. Hazme un resumen detallado de mi desempeño con puntos fuertes, áreas de mejora y una calificación estimada.');
-    appendMessage('assistant', response.response.text());
+    let replyText = '';
+    
+    if (activeProvider === 'gemini') {
+      const response = await chatSession.sendMessage(text);
+      replyText = response.response.text();
+    } else {
+      const url = activeProvider === 'openrouter' 
+        ? "https://openrouter.ai/api/v1/chat/completions" 
+        : "https://integrate.api.nvidia.com/v1/chat/completions";
+      const model = activeProvider === 'openrouter' 
+        ? "meta-llama/llama-3-8b-instruct:free" 
+        : "meta/llama3-8b-instruct";
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${key}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: "system", content: activeSystemPrompt },
+            ...chatHistory
+          ]
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+      const data = await response.json();
+      replyText = data.choices[0].message.content;
+    }
+
+    appendMessage('assistant', replyText);
     endInterviewBtn.style.display = 'none';
     chatInput.disabled = true;
     sendBtn.disabled = true;

@@ -34,8 +34,16 @@
       <div class="settings-panel">
         <h3>Configuración</h3>
         <div class="form-group">
-          <label for="apiKey">Gemini API Key (Cargada de .env / Manual)</label>
-          <input type="password" id="apiKey" placeholder="AIzaSy... (o vacío para usar .env)" autocomplete="off">
+          <label for="apiProvider">Proveedor de API</label>
+          <select id="apiProvider" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.75rem 1rem; font-size: 0.9rem; outline: none; margin-bottom: 0.5rem;">
+            <option value="openrouter" selected>OpenRouter (Llama 3 Free)</option>
+            <option value="nvidia">Nvidia NIM (Llama 3 8B)</option>
+            <option value="gemini">Gemini (gemini-1.5-flash)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="apiKey">API Key (Cargada de .env / Manual)</label>
+          <input type="password" id="apiKey" placeholder="Clave de API... (o vacío para usar .env)" autocomplete="off">
           <span class="help-text" id="apiKeyHelp" style="color: var(--text-secondary);">Se usarán las llaves del archivo .env por defecto.</span>
         </div>
         <div class="form-group">
