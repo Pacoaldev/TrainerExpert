@@ -1,5 +1,5 @@
 # Start-TrainerExpert.ps1
 $projectDir = "c:\Users\spano\Documents\PROYECTOS\TrainerExpert"
-Start-Process -FilePath "npx" -ArgumentList "http-server", "-p", "8080" -WorkingDirectory $projectDir -WindowStyle Hidden
-Start-Sleep -Seconds 1
-Start-Process "http://localhost:8080"
+Start-Process -FilePath "npx" -ArgumentList "-y", "http-server", "-p", "8080" -WorkingDirectory $projectDir -WindowStyle Hidden
+Start-Sleep -Seconds 3
+Start-Process -FilePath "C:\Program Files\Perplexity\Comet\Application\comet.exe" -ArgumentList "http://localhost:8080"
