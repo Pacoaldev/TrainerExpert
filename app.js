@@ -49,22 +49,33 @@ interviewerProfileInput.addEventListener('input', (e) => {
   document.getElementById('interviewerRole').textContent = name;
 });
 
-// Load API keys from .env and local storage
 async function loadEnvKeys() {
   apiKeys = [];
   try {
     const response = await fetch('./.env');
     if (response.ok) {
       const text = await response.text();
-      const lines = text.split('\n');
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+      let collecting = false;
       for (let line of lines) {
-        if (line.trim().startsWith('GEMINI_API_KEYS=')) {
-          const keysVal = line.split('=')[1].trim();
-          apiKeys = keysVal.split(',').map(k => k.trim()).filter(k => k);
-          console.log(`Cargadas ${apiKeys.length} claves API desde .env`);
-          break;
+        if (line.startsWith('GEMINI_API_KEYS=')) {
+          collecting = true;
+          const val = line.split('=')[1].trim();
+          if (val) {
+            apiKeys = val.split(',').map(k => k.trim()).filter(k => k);
+            collecting = false;
+          }
+          continue;
+        }
+        if (collecting) {
+          if (line.includes('=')) {
+            collecting = false;
+          } else if (!line.startsWith('#')) {
+            apiKeys.push(line);
+          }
         }
       }
+      console.log(`Cargadas ${apiKeys.length} claves API desde .env`);
     }
   } catch (e) {
     console.log('No se pudo cargar el archivo .env automáticamente:', e);
