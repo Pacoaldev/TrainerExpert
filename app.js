@@ -1,5 +1,6 @@
 import { techDrills, defaultScenarios } from './scenarios.js';
 import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
+import { marked } from 'https://esm.run/marked';
 
 // State variables
 let activeHandbookContent = '';
@@ -352,7 +353,9 @@ async function startInterview(scenarioName = '') {
 function appendMessage(role, text) {
   const div = document.createElement('div');
   div.className = `message ${role}`;
-  div.innerHTML = `<div class="message-bubble">${text}</div>`;
+  // Use marked.parse to render markdown formatting like bold, lists, and newlines
+  const htmlContent = marked.parse(text);
+  div.innerHTML = `<div class="message-bubble">${htmlContent}</div>`;
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }

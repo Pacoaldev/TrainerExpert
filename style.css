@@ -362,6 +362,19 @@ body.dark-theme {
   line-height: 1.5;
 }
 
+.message-bubble p {
+  margin-bottom: 0.75rem;
+}
+
+.message-bubble p:last-child {
+  margin-bottom: 0;
+}
+
+.message-bubble ul, .message-bubble ol {
+  margin-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
 .message.assistant .message-bubble {
   background: rgba(255,255,255,0.05);
   color: var(--text-primary);
