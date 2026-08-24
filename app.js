@@ -4,10 +4,13 @@ import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
 // State variables
 let activeHandbookContent = '';
 let activeHandbookName = 'Ninguno';
+let apiKeys = [];
+let currentKeyIndex = 0;
 let geminiApiKey = localStorage.getItem('trainer_expert_api_key') || '';
 let activeTab = 'dashboard';
 let chatSession = null;
 let currentDrillIndex = 0;
+let activeSystemPrompt = '';
 
 // DOM Elements
 const apiKeyInput = document.getElementById('apiKey');
@@ -18,6 +21,10 @@ const chatInput = document.getElementById('chatInput');
 const sendBtn = document.getElementById('sendBtn');
 const scenariosList = document.getElementById('scenariosList');
 const endInterviewBtn = document.getElementById('endInterviewBtn');
+const candidateProfileInput = document.getElementById('candidateProfile');
+const interviewerProfileInput = document.getElementById('interviewerProfile');
+const handbookPathInput = document.getElementById('handbookPath');
+const loadHandbookPathBtn = document.getElementById('loadHandbookPathBtn');
 
 // Initialize settings
 if (geminiApiKey) {
@@ -29,9 +36,6 @@ if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 }
 
-const candidateProfileInput = document.getElementById('candidateProfile');
-const interviewerProfileInput = document.getElementById('interviewerProfile');
-
 candidateProfileInput.value = localStorage.getItem('trainer_expert_candidate_profile') || '';
 interviewerProfileInput.value = localStorage.getItem('trainer_expert_interviewer_profile') || '';
 
@@ -41,16 +45,61 @@ candidateProfileInput.addEventListener('input', (e) => {
 
 interviewerProfileInput.addEventListener('input', (e) => {
   localStorage.setItem('trainer_expert_interviewer_profile', e.target.value);
-  const name = e.target.value.split(',')[0] || 'Entrevistador';
+  const name = e.target.value.split('\n')[0].replace('#', '').trim() || 'Tech Lead';
   document.getElementById('interviewerRole').textContent = name;
 });
 
-const handbookPathInput = document.getElementById('handbookPath');
-const loadHandbookPathBtn = document.getElementById('loadHandbookPathBtn');
+// Load API keys from .env and local storage
+async function loadEnvKeys() {
+  apiKeys = [];
+  try {
+    const response = await fetch('./.env');
+    if (response.ok) {
+      const text = await response.text();
+      const lines = text.split('\n');
+      for (let line of lines) {
+        if (line.trim().startsWith('GEMINI_API_KEYS=')) {
+          const keysVal = line.split('=')[1].trim();
+          apiKeys = keysVal.split(',').map(k => k.trim()).filter(k => k);
+          console.log(`Cargadas ${apiKeys.length} claves API desde .env`);
+          break;
+        }
+      }
+    }
+  } catch (e) {
+    console.log('No se pudo cargar el archivo .env automáticamente:', e);
+  }
+  
+  if (geminiApiKey) {
+    apiKeys = [geminiApiKey, ...apiKeys.filter(k => k !== geminiApiKey)];
+  }
+  
+  currentKeyIndex = 0;
+  updateUI();
+}
 
+function getActiveKey() {
+  return apiKeys[currentKeyIndex] || '';
+}
+
+function rotateApiKey() {
+  if (currentKeyIndex < apiKeys.length - 1) {
+    currentKeyIndex++;
+    console.log(`Rotando clave API a la posición ${currentKeyIndex + 1} debido a un fallo.`);
+    return true;
+  }
+  return false;
+}
+
+// Action for manual load
 loadHandbookPathBtn.addEventListener('click', async () => {
-  const filename = handbookPathInput.value.trim();
+  let filename = handbookPathInput.value.trim();
   if (!filename) return;
+  
+  if (filename.startsWith('handbooks/')) {
+    filename = filename.replace('handbooks/', '');
+  }
+  
   try {
     const response = await fetch(`./handbooks/${filename}`);
     if (response.ok) {
@@ -67,20 +116,47 @@ loadHandbookPathBtn.addEventListener('click', async () => {
   }
 });
 
+// Load default profiles on start
+async function loadDefaultProfiles() {
+  try {
+    const respC = await fetch('./candidate.md');
+    if (respC.ok) {
+      const text = await respC.text();
+      candidateProfileInput.value = text;
+      localStorage.setItem('trainer_expert_candidate_profile', text);
+    }
+  } catch (e) {
+    console.log('No se pudo auto-cargar candidate.md');
+  }
+
+  try {
+    const respI = await fetch('./interviewer.md');
+    if (respI.ok) {
+      const text = await respI.text();
+      interviewerProfileInput.value = text;
+      localStorage.setItem('trainer_expert_interviewer_profile', text);
+      const name = text.split('\n')[0].replace('#', '').trim() || 'Tech Lead';
+      document.getElementById('interviewerRole').textContent = name;
+    }
+  } catch (e) {
+    console.log('No se pudo auto-cargar interviewer.md');
+  }
+}
+
 // Load default handbook
 async function loadDefaultHandbook() {
   try {
-    const response = await fetch('./handbooks/default.md');
+    const response = await fetch('./handbooks/handbook.example.md');
     if (response.ok) {
       activeHandbookContent = await response.text();
-      activeHandbookName = 'default.md';
-      activeHandbookTitle.textContent = 'default.md';
-      console.log('Default handbook loaded successfully.');
+      activeHandbookName = 'handbook.example.md';
+      activeHandbookTitle.textContent = 'handbook.example.md';
+      console.log('Default handbook cargado de forma correcta.');
     } else {
-      activeHandbookContent = 'Por favor, añade un archivo a /handbooks/default.md o cárgalo para comenzar.';
+      activeHandbookContent = 'Por favor, añade un archivo a /handbooks/handbook.example.md o introduce uno en "Cargar desde...".';
     }
   } catch (e) {
-    console.error('Error loading default handbook:', e);
+    console.error('Error cargando default handbook:', e);
   }
   updateUI();
 }
@@ -101,7 +177,7 @@ document.querySelectorAll('.nav-item').forEach(button => {
 apiKeyInput.addEventListener('input', (e) => {
   geminiApiKey = e.target.value.trim();
   localStorage.setItem('trainer_expert_api_key', geminiApiKey);
-  updateUI();
+  loadEnvKeys();
 });
 
 handbookUpload.addEventListener('change', (e) => {
@@ -163,22 +239,11 @@ function renderScenarios() {
   });
 }
 
-// AI Interview Logic
-async function startInterview(scenarioName = '') {
-  if (!geminiApiKey) {
-    alert('Introduce tu Gemini API Key en la configuración antes de empezar.');
-    return;
-  }
-
-  // Switch to interview tab
-  document.querySelector('[data-tab="interview"]').click();
-  chatMessages.innerHTML = `<div class="message assistant"><div class="message-bubble">Iniciando simulación con el Tech Lead...</div></div>`;
-  endInterviewBtn.style.display = 'block';
-
+function buildSystemPrompt(scenarioName) {
   const candidateProfile = candidateProfileInput.value.trim();
   const interviewerProfile = interviewerProfileInput.value.trim();
-
-  const systemPrompt = `
+  
+  return `
     Eres el entrevistador principal según el perfil definido abajo y el Handbook proporcionado.
     
     Perfil del entrevistador a emular:
@@ -203,17 +268,31 @@ async function startInterview(scenarioName = '') {
     4. Sé fiel al perfil del entrevistador especificado.
     5. Importante: Mantén tus respuestas conversacionales y cortas. Máximo 2-3 párrafos por turno para facilitar el intercambio fluido.
   `;
+}
+
+// AI Interview Logic
+async function startInterview(scenarioName = '') {
+  const key = getActiveKey();
+  if (!key) {
+    alert('Introduce tu Gemini API Key o configura un archivo .env.');
+    return;
+  }
+
+  document.querySelector('[data-tab="interview"]').click();
+  chatMessages.innerHTML = `<div class="message assistant"><div class="message-bubble">Iniciando simulación con el Tech Lead...</div></div>`;
+  endInterviewBtn.style.display = 'block';
+
+  activeSystemPrompt = buildSystemPrompt(scenarioName);
 
   try {
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    const genAI = new GoogleGenerativeAI(key);
     const model = genAI.getGenerativeModel({
       model: 'gemini-1.5-flash',
-      systemInstruction: systemPrompt
+      systemInstruction: activeSystemPrompt
     });
 
     chatSession = model.startChat({ history: [] });
     
-    // Initial prompt
     const response = await chatSession.sendMessage('Hola, estoy listo para iniciar la entrevista.');
     chatMessages.innerHTML = '';
     appendMessage('assistant', response.response.text());
@@ -221,7 +300,11 @@ async function startInterview(scenarioName = '') {
     chatInput.disabled = false;
     sendBtn.disabled = false;
   } catch (error) {
-    chatMessages.innerHTML = `<div class="message assistant"><div class="message-bubble text-danger">Error: ${error.message}</div></div>`;
+    if (rotateApiKey()) {
+      await startInterview(scenarioName);
+    } else {
+      chatMessages.innerHTML = `<div class="message assistant"><div class="message-bubble text-danger">Error: ${error.message} (Todas las claves fallaron)</div></div>`;
+    }
   }
 }
 
@@ -239,8 +322,10 @@ async function handleSendMessage() {
 
   chatInput.value = '';
   appendMessage('user', text);
+  await sendMessageWithFallback(text);
+}
 
-  // Show loading indicator
+async function sendMessageWithFallback(text) {
   const loadingDiv = document.createElement('div');
   loadingDiv.className = 'message assistant loading-indicator';
   loadingDiv.innerHTML = `<div class="message-bubble">Escribiendo respuesta...</div>`;
@@ -253,7 +338,24 @@ async function handleSendMessage() {
     appendMessage('assistant', response.response.text());
   } catch (error) {
     loadingDiv.remove();
-    appendMessage('assistant', `Error: ${error.message}`);
+    if (rotateApiKey()) {
+      appendMessage('assistant', `[Rotación automática de clave API por fallo. Reintentando...]`);
+      // Re-initialize session
+      const key = getActiveKey();
+      try {
+        const genAI = new GoogleGenerativeAI(key);
+        const model = genAI.getGenerativeModel({
+          model: 'gemini-1.5-flash',
+          systemInstruction: activeSystemPrompt
+        });
+        chatSession = model.startChat({ history: [] });
+        await sendMessageWithFallback(text);
+      } catch (err) {
+        appendMessage('assistant', `Fallo en clave de respaldo: ${err.message}`);
+      }
+    } else {
+      appendMessage('assistant', `Error: ${error.message}`);
+    }
   }
 }
 
@@ -298,7 +400,6 @@ document.getElementById('checkTechAnswerBtn').addEventListener('click', () => {
   if (correct) {
     feedbackEl.className = 'tech-feedback success';
     feedbackEl.innerHTML = `<strong>¡Excelente!</strong> Tu respuesta contiene los conceptos clave esperados: ${drill.expectedKeywords.join(', ')}.<br><br><strong>Solución propuesta:</strong><br><pre><code>${drill.solution}</code></pre>`;
-    // Move to next drill after some time or add button
     if (currentDrillIndex < techDrills.length - 1) {
       currentDrillIndex++;
       setTimeout(loadDrill, 5000);
@@ -312,7 +413,8 @@ document.getElementById('checkTechAnswerBtn').addEventListener('click', () => {
 
 // Update UI States
 function updateUI() {
-  if (geminiApiKey) {
+  const key = getActiveKey();
+  if (key) {
     chatInput.disabled = false;
     sendBtn.disabled = false;
   } else {
@@ -322,6 +424,12 @@ function updateUI() {
 }
 
 // Initial setup
-loadDefaultHandbook();
-renderScenarios();
-loadDrill();
+async function initApp() {
+  await loadEnvKeys();
+  await loadDefaultProfiles();
+  await loadDefaultHandbook();
+  renderScenarios();
+  loadDrill();
+}
+
+initApp();

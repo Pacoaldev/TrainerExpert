@@ -2,3 +2,6 @@
 .agents/
 .git/
 /handbooks
+.env
+candidate.md
+interviewer.md
