@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
 
 // State variables
 let activeHandbookContent = '';
-let activeHandbookName = 'Handbook Example';
+let activeHandbookName = 'Ninguno';
 let geminiApiKey = localStorage.getItem('trainer_expert_api_key') || '';
 let activeTab = 'dashboard';
 let chatSession = null;
@@ -45,15 +45,39 @@ interviewerProfileInput.addEventListener('input', (e) => {
   document.getElementById('interviewerRole').textContent = name;
 });
 
+const handbookPathInput = document.getElementById('handbookPath');
+const loadHandbookPathBtn = document.getElementById('loadHandbookPathBtn');
+
+loadHandbookPathBtn.addEventListener('click', async () => {
+  const filename = handbookPathInput.value.trim();
+  if (!filename) return;
+  try {
+    const response = await fetch(`./handbooks/${filename}`);
+    if (response.ok) {
+      activeHandbookContent = await response.text();
+      activeHandbookName = filename;
+      activeHandbookTitle.textContent = filename;
+      alert(`Handbook "${filename}" cargado desde /handbooks/`);
+      updateUI();
+    } else {
+      alert(`No se pudo encontrar el archivo "handbooks/${filename}"`);
+    }
+  } catch (e) {
+    alert(`Error al cargar el archivo: ${e.message}`);
+  }
+});
+
 // Load default handbook
 async function loadDefaultHandbook() {
   try {
-    const response = await fetch('./handbook.example.md');
+    const response = await fetch('./handbooks/default.md');
     if (response.ok) {
       activeHandbookContent = await response.text();
+      activeHandbookName = 'default.md';
+      activeHandbookTitle.textContent = 'default.md';
       console.log('Default handbook loaded successfully.');
     } else {
-      activeHandbookContent = 'Por favor, carga un handbook válido para comenzar.';
+      activeHandbookContent = 'Por favor, añade un archivo a /handbooks/default.md o cárgalo para comenzar.';
     }
   } catch (e) {
     console.error('Error loading default handbook:', e);
@@ -159,7 +183,7 @@ async function startInterview(scenarioName = '') {
     
     Perfil del entrevistador a emular:
     ===
-    ${interviewerProfile || 'Tech Lead — Backend Tech Lead. Pragmático, directo, centrado en el negocio y la robustez técnica.'}
+    ${interviewerProfile || 'Tech Lead. Pragmático, directo, centrado en el negocio y la robustez técnica.'}
     ===
 
     Perfil y conocimientos del Candidato (utilízalo para adaptar el nivel y las preguntas, buscando evaluar cómo traslada sus conocimientos al ecosistema del handbook):
