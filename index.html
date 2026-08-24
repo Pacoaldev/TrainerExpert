@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrainerExpert - Simulador de Entrevistas con IA</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+</head>
+<body class="dark-theme">
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="logo">
+        <h1>Trainer<span>Expert</span></h1>
+      </div>
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="dashboard">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+          Inicio
+        </button>
+        <button class="nav-item" data-tab="interview">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Simulador Oral
+        </button>
+        <button class="nav-item" data-tab="technical">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          Simulador Técnico
+        </button>
+      </nav>
+
+      <div class="settings-panel">
+        <h3>Configuración</h3>
+        <div class="form-group">
+          <label for="apiKey">Gemini API Key</label>
+          <input type="password" id="apiKey" placeholder="AIzaSy..." autocomplete="off">
+          <span class="help-text">Se guarda solo en tu navegador.</span>
+        </div>
+        <div class="form-group">
+          <label for="handbookUpload">Cargar Handbook (.md, .txt, .pdf)</label>
+          <div class="file-drop-zone">
+            <input type="file" id="handbookUpload" accept=".md,.txt,.pdf">
+            <span class="file-name">Example Handbook (Por defecto)</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="candidateProfile">Perfil del Candidato (Tus conocimientos)</label>
+          <textarea id="candidateProfile" placeholder="Ej: Ingeniero Backend, 3 años en Spring Boot/Java. Conociendo Laravel..." rows="3" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.5rem; font-size: 0.85rem; resize: none; outline: none;"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="interviewerProfile">Perfil del Entrevistador (Recrear estilo)</label>
+          <textarea id="interviewerProfile" placeholder="Ej: Tech Lead. Pragmático y enfocado en negocio..." rows="3" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.5rem; font-size: 0.85rem; resize: none; outline: none;"></textarea>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <!-- DASHBOARD TAB -->
+      <section id="dashboard" class="tab-content active">
+        <header class="header">
+          <h2>Panel de Control</h2>
+          <p>Prepárate para tus entrevistas técnicas de forma estructurada.</p>
+        </header>
+
+        <div class="dashboard-grid">
+          <div class="card card-primary">
+            <h3>Preparación Actual</h3>
+            <p id="activeHandbookTitle" class="highlight-text">handbook.example.md (genérico)</p>
+            <div class="stats-badge">10 Escenarios Listos</div>
+          </div>
+
+          <div class="card">
+            <h3>Progreso</h3>
+            <div class="progress-container">
+              <div class="progress-bar" style="width: 0%"></div>
+            </div>
+            <p class="stats-label">0% Completado</p>
+          </div>
+        </div>
+
+        <div class="scenarios-section">
+          <h3>Casos Prácticos Disponibles</h3>
+          <div class="scenarios-list" id="scenariosList">
+            <!-- Dinámico -->
+          </div>
+        </div>
+      </section>
+
+      <!-- INTERVIEW TAB -->
+      <section id="interview" class="tab-content">
+        <header class="header chat-header">
+          <div>
+            <h2 id="interviewTitle">Simulador de Entrevista Oral</h2>
+            <p id="interviewerRole">Tech Lead — Backend Tech Lead</p>
+          </div>
+          <button id="endInterviewBtn" class="btn btn-danger" style="display: none;">Terminar y Evaluar</button>
+        </header>
+
+        <div class="chat-container">
+          <div class="chat-messages" id="chatMessages">
+            <div class="message assistant">
+              <div class="message-bubble">
+                ¡Hola! Bienvenido. Por favor introduce tu Gemini API Key en la barra lateral para empezar el simulacro interactivo.
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-input-area">
+            <textarea id="chatInput" placeholder="Escribe tu respuesta pensando en voz alta..." disabled></textarea>
+            <button id="sendBtn" class="btn btn-primary" disabled>Enviar</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TECHNICAL TAB -->
+      <section id="technical" class="tab-content">
+        <header class="header">
+          <h2>Simulador Técnico</h2>
+          <p>Ejercicios rápidos de código, optimización y diseño de base de datos.</p>
+        </header>
+
+        <div class="tech-drills-container">
+          <div class="card code-drill-card">
+            <h3 id="drillTitle">Ejercicio: Optimización de Consultas</h3>
+            <p id="drillDescription">Identifica el problema en el siguiente código y optimízalo.</p>
+            <pre><code id="drillCode">Cargando ejercicio...</code></pre>
+            <div class="tech-input-group">
+              <textarea id="techAnswer" placeholder="Escribe tu solución o explicación técnica..."></textarea>
+              <button id="checkTechAnswerBtn" class="btn btn-primary">Evaluar Ejercicio</button>
+            </div>
+            <div class="tech-feedback" id="techFeedback"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
