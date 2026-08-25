@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.png" alt="TrainerExpert" width="250" />
+</p>
+
 # TrainerExpert
 
 TrainerExpert es una aplicación interactiva diseñada para simular entrevistas técnicas. Permite a los usuarios practicar y evaluar sus habilidades de resolución de problemas con un entrevistador virtual impulsado por inteligencia artificial.
