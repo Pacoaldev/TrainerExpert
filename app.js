@@ -562,7 +562,7 @@ async function startInterview(scenarioName = '') {
   activeScenarioName = scenarioName;
   document.querySelector('[data-tab="interview"]').click();
   chatMessages.innerHTML = `<div class="message assistant"><div class="message-bubble">Iniciando simulación con el Tech Lead...</div></div>`;
-  endInterviewBtn.style.display = 'block';
+  endInterviewBtn.style.display = 'inline-flex';
 
   activeSystemPrompt = buildSystemPrompt(scenarioName);
   const greeting = buildInterviewGreeting(scenarioName);

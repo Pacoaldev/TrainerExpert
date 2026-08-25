@@ -276,6 +276,24 @@ body.dark-theme {
   margin-top: 0.25rem;
 }
 
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.chat-header > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.chat-header #endInterviewBtn {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
 
 /* Cards & Grid */
 .dashboard-grid {
@@ -641,6 +659,16 @@ body.dark-theme {
 
   .header h2 {
     font-size: 1.35rem;
+  }
+
+  .chat-header {
+    align-items: flex-start;
+  }
+
+  .chat-header #endInterviewBtn {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
   }
 
   .chat-container {
