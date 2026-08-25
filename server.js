@@ -105,7 +105,7 @@ async function handleRequest(req, res) {
     sendJson(res, 200, { status: 'stopping' });
     console.log('Apagando servidor Node (la pestaña se cierra desde el cliente)...');
     // Delay so the HTTP response reaches the browser before exit
-    setTimeout(() => process.exit(0), 150);
+    setTimeout(() => process.exit(0), 300);
     return;
   }
 

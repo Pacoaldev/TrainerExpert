@@ -77,25 +77,38 @@ const handbookPathInput = document.getElementById('handbookPath');
 const loadHandbookPathBtn = document.getElementById('loadHandbookPathBtn');
 const shutdownBtn = document.getElementById('shutdownBtn');
 
-shutdownBtn.addEventListener('click', async () => {
-  if (!confirm('¿Cerrar TrainerExpert?\nSe detendrá el servidor y se intentará cerrar solo esta pestaña (no el navegador entero).')) {
+shutdownBtn.addEventListener('click', () => {
+  if (!confirm('¿Cerrar TrainerExpert?\nSe detendrá el servidor y podrás cerrar solo esta pestaña (no el navegador entero).')) {
     return;
   }
-  try {
-    await fetch('./api/shutdown', { method: 'POST' });
-  } catch (e) {
-    // Expected: connection drops when Node exits
-  }
-  // Only closes this tab/window — never kills the whole browser process
-  window.close();
-  // If the browser blocks window.close() (tab not opened por script):
-  document.body.innerHTML = `
-    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0d19;color:#f3f4f6;font-family:system-ui,sans-serif;padding:2rem;text-align:center;">
-      <div>
-        <h1 style="margin-bottom:0.75rem;">TrainerExpert detenido</h1>
-        <p style="color:#9ca3af;">El servidor se ha apagado. Puedes cerrar esta pestaña manualmente.</p>
-      </div>
-    </div>`;
+
+  let done = false;
+  const showClosedScreen = () => {
+    if (done) return;
+    done = true;
+    try { window.close(); } catch (_) { /* ignore */ }
+    // Most mobile browsers ignore window.close() — always show this fallback
+    document.open();
+    document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>TrainerExpert detenido</title>
+<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0d19;color:#f3f4f6;font-family:system-ui,sans-serif;padding:2rem;text-align:center}
+h1{margin:0 0 .75rem;font-size:1.4rem}p{margin:0;color:#9ca3af;line-height:1.5}</style></head><body>
+<div><h1>TrainerExpert detenido</h1><p>El servidor se ha apagado.<br>Ya puedes cerrar esta pestaña manualmente.</p></div>
+</body></html>`);
+    document.close();
+  };
+
+  // Don't await forever: when Node exits, fetch often hangs on mobile
+  const ctrl = new AbortController();
+  const killTimer = setTimeout(() => ctrl.abort(), 1200);
+  fetch('./api/shutdown', { method: 'POST', keepalive: true, signal: ctrl.signal })
+    .catch(() => {})
+    .finally(() => {
+      clearTimeout(killTimer);
+      showClosedScreen();
+    });
+
+  // Absolute fallback if fetch never settles
+  setTimeout(showClosedScreen, 1500);
 });
 
 // Initialize settings
