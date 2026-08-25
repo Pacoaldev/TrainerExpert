@@ -889,8 +889,10 @@ function startDictation() {
 
   recognition = new SpeechRecognitionCtor();
   recognition.lang = 'es-ES';
-  recognition.continuous = true;
+  // continuous+rebuild from 0 duplicates hard on Chrome Android (each result often carries full text)
+  recognition.continuous = !isMobileLayout();
   recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
 
   baseTextBeforeDictation = chatInput.value;
   if (baseTextBeforeDictation && !/\s$/.test(baseTextBeforeDictation)) {
@@ -898,14 +900,24 @@ function startDictation() {
   }
 
   recognition.onresult = (event) => {
-    let finalChunk = '';
-    let interimChunk = '';
-    for (let i = 0; i < event.results.length; i++) {
-      const result = event.results[i];
-      if (result.isFinal) finalChunk += result[0].transcript;
-      else interimChunk += result[0].transcript;
+    let interim = '';
+    // Only process new results (resultIndex). Re-scanning 0..n duplicates on mobile.
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const piece = (event.results[i][0].transcript || '').trim();
+      if (!piece) continue;
+      if (event.results[i].isFinal) {
+        const needsSpace = baseTextBeforeDictation && !/\s$/.test(baseTextBeforeDictation);
+        const candidate = (needsSpace ? ' ' : '') + piece;
+        // Guard: Android sometimes re-delivers the same final
+        if (!baseTextBeforeDictation.endsWith(piece)) {
+          baseTextBeforeDictation += candidate;
+        }
+      } else {
+        interim += (interim ? ' ' : '') + piece;
+      }
     }
-    chatInput.value = baseTextBeforeDictation + finalChunk + interimChunk;
+    const gap = interim && baseTextBeforeDictation && !/\s$/.test(baseTextBeforeDictation) ? ' ' : '';
+    chatInput.value = baseTextBeforeDictation + gap + interim;
     chatInput.scrollTop = chatInput.scrollHeight;
   };
 
