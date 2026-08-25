@@ -2,7 +2,6 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
 
 const PORT = 8080;
 const HTTPS_PORT = 8443;
@@ -104,8 +103,9 @@ async function handleRequest(req, res) {
 
   if (urlPath === '/api/shutdown' && req.method === 'POST') {
     sendJson(res, 200, { status: 'stopping' });
-    console.log('Cerrando servidor y navegador...');
-    exec('taskkill /F /IM comet.exe', () => process.exit(0));
+    console.log('Apagando servidor Node (la pestaña se cierra desde el cliente)...');
+    // Delay so the HTTP response reaches the browser before exit
+    setTimeout(() => process.exit(0), 150);
     return;
   }
 

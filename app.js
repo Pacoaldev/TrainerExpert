@@ -78,13 +78,24 @@ const loadHandbookPathBtn = document.getElementById('loadHandbookPathBtn');
 const shutdownBtn = document.getElementById('shutdownBtn');
 
 shutdownBtn.addEventListener('click', async () => {
-  if (confirm('¿Estás seguro de que deseas cerrar la aplicación?')) {
-    try {
-      await fetch('./api/shutdown', { method: 'POST' });
-    } catch (e) {
-      console.error('Error apagando:', e);
-    }
+  if (!confirm('¿Cerrar TrainerExpert?\nSe detendrá el servidor y se intentará cerrar solo esta pestaña (no el navegador entero).')) {
+    return;
   }
+  try {
+    await fetch('./api/shutdown', { method: 'POST' });
+  } catch (e) {
+    // Expected: connection drops when Node exits
+  }
+  // Only closes this tab/window — never kills the whole browser process
+  window.close();
+  // If the browser blocks window.close() (tab not opened por script):
+  document.body.innerHTML = `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0d19;color:#f3f4f6;font-family:system-ui,sans-serif;padding:2rem;text-align:center;">
+      <div>
+        <h1 style="margin-bottom:0.75rem;">TrainerExpert detenido</h1>
+        <p style="color:#9ca3af;">El servidor se ha apagado. Puedes cerrar esta pestaña manualmente.</p>
+      </div>
+    </div>`;
 });
 
 // Initialize settings

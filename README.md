@@ -54,4 +54,4 @@ Si `https://IP:8443` no carga desde el móvil, permite Node en el firewall (puer
 
 ## Apagar
 
-**Apagar Aplicación** detiene el servidor Node (HTTP+HTTPS/proxy) y cierra Comet en Windows.
+**Apagar Aplicación** detiene el servidor Node (HTTP/HTTPS/proxy) e intenta cerrar **solo esta pestaña**. Ya no mata el navegador entero.
