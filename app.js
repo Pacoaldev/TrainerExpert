@@ -14,6 +14,7 @@ let chatSession = null;
 let chatHistory = [];
 let currentDrillIndex = 0;
 let activeSystemPrompt = '';
+let activeScenarioName = '';
 
 // DOM Elements
 const apiProviderSelect = document.getElementById('apiProvider');
@@ -116,9 +117,6 @@ async function loadEnvKeys() {
   
   currentKeyIndex = 0;
   updateUI();
-  if (apiKeys.length > 0) {
-    startInterview();
-  }
 }
 
 function getActiveKey() {
@@ -282,39 +280,94 @@ function renderScenarios() {
   });
 }
 
+function getScenarioByName(name) {
+  return defaultScenarios.find(sc => sc.name === name) || null;
+}
+
 function buildSystemPrompt(scenarioName) {
   const candidateProfile = candidateProfileInput.value.trim();
   const interviewerProfile = interviewerProfileInput.value.trim();
-  
+  const scenario = getScenarioByName(scenarioName);
+  const topicHint = scenario
+    ? `El candidato eligió practicar alrededor de: ${scenario.caseTopic}. Úsalo como hilo conductor natural cuando toque el caso práctico (no como examen cerrado). Posibles profundizaciones (elige según lo que diga, no las leas en lista):\n${scenario.deepening.map(q => `- ${q}`).join('\n')}`
+    : 'Cuando toque el caso práctico, elige un problema real del dominio del handbook (pedidos, stock, informes, importación…).';
+
   return `
-    Eres el entrevistador principal según el perfil definido abajo y el Handbook proporcionado.
-    
-    Perfil del entrevistador a emular:
-    ===
-    ${interviewerProfile || 'Tech Lead. Pragmático, directo, centrado en el negocio y la robustez técnica.'}
-    ===
+Eres el entrevistador del perfil de abajo. Estás haciendo una entrevista técnica ORAL presencial de 45–60 minutos para un puesto de Full-Stack Engineer.
 
-    Perfil y conocimientos del Candidato (utilízalo para adaptar el nivel y las preguntas, buscando evaluar cómo traslada sus conocimientos al ecosistema del handbook):
-    ===
-    ${candidateProfile || 'Perfil general de ingeniería backend.'}
-    ===
+El usuario es el CANDIDATO. Tú solo hablas como entrevistador. Nunca escribas respuestas del candidato ni inventes lo que él diría.
 
-    Handbook técnico de referencia (toda la entrevista se rige por estos principios, casos y dinámicas):
-    ===
-    ${activeHandbookContent}
-    ===
-    
-    Instrucciones de comportamiento:
-    1. Debes simular una entrevista técnica realista basada en el escenario: ${scenarioName || 'general del handbook'}.
-    2. No evalúes sintaxis de memoria, busca razonamiento técnico, evaluación de trade-offs y pensamiento en voz alta.
-    3. Plantea problemas progresivos, y luego repregunta escalando el volumen o introduciendo fallos.
-    4. Sé fiel al perfil del entrevistador especificado.
-    5. IMPORTANTE - FORMATO DE RESPUESTA:
-       - No respondas nunca con un único bloque o párrafo continuo de texto.
-       - Usa obligatoriamente párrafos separados por dos saltos de línea (doble newline '\n\n') para cada idea.
-       - Si vas a listar puntos fuertes, áreas de mejora o detalles, utiliza listas con guiones y saltos de línea claros (por ejemplo: - **Concepto**: Explicación).
-       - Mantén tus respuestas conversacionales pero muy estructuradas visualmente.
-  `;
+Perfil del entrevistador (imítalo: tono, criterio, señales verdes/rojas):
+===
+${interviewerProfile || 'Tech Lead pragmático, directo, centrado en negocio y robustez técnica.'}
+===
+
+Perfil del candidato (conócelo para adaptar el nivel; NO lo sustituyas en el chat):
+===
+${candidateProfile || 'Perfil general de ingeniería full-stack.'}
+===
+
+Handbook / material de referencia (contexto de producto, dominio y casos típicos — NO es un guion que hay que recitar; es para que sepas de qué habla la empresa y qué tipo de problemas suelen salir):
+===
+${activeHandbookContent}
+===
+
+${topicHint}
+
+## Qué es esta conversación
+
+Una entrevista tech oral real: conversación de ingeniería. Cada respuesta del candidato genera tu siguiente pregunta. La primera respuesta del candidato marca el tono.
+
+Flujo natural (no lo anuncies ni lo numeres al candidato):
+- Arranque: presentación y rapport.
+- Luego: experiencia técnica relevante.
+- Luego: un caso práctico de diseño / razonamiento.
+- Luego: profundizas ("¿Y si…?", escala, concurrencia, fallos, asincronía, trade-offs) según lo que vaya diciendo.
+- Al final (solo si pide terminar o encaja): feedback breve.
+
+## Reglas de turno
+
+1. UNA pregunta por mensaje.
+2. Reacciona en 1–2 frases a lo que acaba de decir y profundiza.
+3. No evalúes en bloque hasta "Terminar y Evaluar".
+4. Valoras razonamiento y trade-offs, no sintaxis de memoria.
+5. Si propone tecnología de más sin justificar volumen, empuja a lo simple.
+6. Recuerda el hilo; no reinicies ni repitas preguntas.
+
+## Formato
+
+Español, conversacional, párrafos cortos con doble salto de línea. Sin monólogos ni listas largas mientras la entrevista está en curso.
+  `.trim();
+}
+
+function buildInterviewGreeting(scenarioName) {
+  const interviewer = getInterviewerData(interviewerProfileInput.value);
+  const scenario = getScenarioByName(scenarioName);
+  const caseLine = scenario
+    ? ` Más adelante hablaremos de un caso alrededor de **${scenario.caseTopic}**.`
+    : '';
+
+  return `Hola, soy **${interviewer.name}**, ${interviewer.role}. Hoy es una entrevista técnica oral para el puesto de **Full-Stack Engineer** (unos 45–60 minutos). Me interesa cómo razonas problemas reales en ${interviewer.domain}, no memorizar ${interviewer.stack}.
+
+Empezamos como en una entrevista de verdad: cuéntame brevemente sobre ti y tu experiencia.${caseLine}
+
+¿Te parece? Cuando quieras, preséntate.`;
+}
+
+function seedInterviewChat(greeting) {
+  chatHistory = [{ role: 'assistant', content: greeting }];
+}
+
+async function initGeminiSession(greeting) {
+  const key = getActiveKey();
+  const genAI = new GoogleGenerativeAI(key);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-1.5-flash',
+    systemInstruction: activeSystemPrompt
+  });
+  chatSession = model.startChat({
+    history: [{ role: 'model', parts: [{ text: greeting }] }]
+  });
 }
 
 function getInterviewerData(profileText) {
@@ -362,31 +415,18 @@ async function startInterview(scenarioName = '') {
 
   if (chatSession && !scenarioName) return;
 
+  activeScenarioName = scenarioName;
   document.querySelector('[data-tab="interview"]').click();
   chatMessages.innerHTML = `<div class="message assistant"><div class="message-bubble">Iniciando simulación con el Tech Lead...</div></div>`;
   endInterviewBtn.style.display = 'block';
 
   activeSystemPrompt = buildSystemPrompt(scenarioName);
-  chatHistory = [];
-
-  const interviewer = getInterviewerData(interviewerProfileInput.value);
-
-  let greeting = '';
-  if (scenarioName) {
-    greeting = `Hola, soy ${interviewer.name}. Vamos a iniciar el caso práctico sobre: **${scenarioName}**. ¿Cómo lo plantearías inicialmente?`;
-  } else {
-    greeting = `Hola, soy ${interviewer.name}, ${interviewer.role}. Vamos a hacer una entrevista técnica de unos 45–60 minutos: me interesa cómo razonas problemas reales de backend en un producto ${interviewer.domain}, no memorizar ${interviewer.stack}. Empezamos con una presentación breve de tu experiencia y después planteamos un caso. ¿Te parece?`;
-  }
+  const greeting = buildInterviewGreeting(scenarioName);
+  seedInterviewChat(greeting);
 
   if (activeProvider === 'gemini') {
     try {
-      const genAI = new GoogleGenerativeAI(key);
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        systemInstruction: activeSystemPrompt
-      });
-
-      chatSession = model.startChat({ history: [] });
+      await initGeminiSession(greeting);
       updateUI();
       chatMessages.innerHTML = '';
       appendMessage('assistant', greeting);
@@ -509,7 +549,7 @@ endInterviewBtn.addEventListener('click', async () => {
   if (!chatSession) return;
   appendMessage('assistant', 'Analizando desempeño final de la entrevista...');
   
-  const text = 'Quiero terminar la entrevista. Hazme un resumen detallado de mi desempeño con puntos fuertes, áreas de mejora y una calificación estimada.';
+  const text = 'Quiero terminar la entrevista. Eres Tech Lead evaluando a un candidato a Full-Stack Engineer. Hazme un resumen de mi desempeño: puntos fuertes, áreas de mejora y una señal clara (sí / no / dudoso), sin rodeos.';
   chatHistory.push({ role: 'user', content: text });
   const key = getActiveKey();
 
@@ -572,7 +612,8 @@ document.getElementById('checkTechAnswerBtn').addEventListener('click', () => {
   const drill = techDrills[currentDrillIndex];
   const feedbackEl = document.getElementById('techFeedback');
 
-  const correct = drill.expectedKeywords.every(kw => userAns.includes(kw.toLowerCase()));
+  // ponytail: keyword OR-match is enough for practice drills; upgrade to LLM grading if false positives annoy
+  const correct = drill.expectedKeywords.some(kw => userAns.includes(kw.toLowerCase()));
   if (correct) {
     feedbackEl.className = 'tech-feedback success';
     feedbackEl.innerHTML = `<strong>¡Excelente!</strong> Tu respuesta contiene los conceptos clave esperados: ${drill.expectedKeywords.join(', ')}.<br><br><strong>Solución propuesta:</strong><br><pre><code>${drill.solution}</code></pre>`;
@@ -675,6 +716,21 @@ if (toggleSidebarBtn && showSidebarBtn) {
   showSidebarBtn.addEventListener('click', showSidebar);
 }
 
+const settingsPanel = document.getElementById('settingsPanel');
+const settingsToggle = document.getElementById('settingsToggle');
+if (settingsToggle && settingsPanel) {
+  const collapsed = localStorage.getItem('trainer_expert_settings_collapsed') === '1';
+  if (collapsed) {
+    settingsPanel.classList.add('collapsed');
+    settingsToggle.setAttribute('aria-expanded', 'false');
+  }
+  settingsToggle.addEventListener('click', () => {
+    const isCollapsed = settingsPanel.classList.toggle('collapsed');
+    settingsToggle.setAttribute('aria-expanded', String(!isCollapsed));
+    localStorage.setItem('trainer_expert_settings_collapsed', isCollapsed ? '1' : '0');
+  });
+}
+
 // Initial setup
 async function initApp() {
   await loadEnvKeys();
@@ -682,9 +738,6 @@ async function initApp() {
   await loadDefaultHandbook();
   renderScenarios();
   loadDrill();
-  if (getActiveKey()) {
-    startInterview();
-  }
 }
 
 initApp();

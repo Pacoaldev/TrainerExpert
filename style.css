@@ -119,12 +119,55 @@ body.dark-theme {
   padding-top: 1.5rem;
 }
 
-.settings-panel h3 {
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  margin: 0.25rem 0 0;
+  color: inherit;
+  border-top: 1px solid var(--border-color);
+}
+
+.settings-toggle h3 {
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--text-secondary);
-  margin-bottom: 1rem;
+  margin: 0;
+}
+
+.settings-chevron {
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.settings-panel.collapsed .settings-chevron {
+  transform: rotate(-90deg);
+}
+
+.settings-panel.collapsed .settings-toggle {
+  margin-bottom: 0;
+}
+
+.settings-body {
+  overflow: hidden;
+  max-height: 2000px;
+  opacity: 1;
+  margin-top: 1rem;
+  transition: max-height 0.3s ease, opacity 0.2s ease, margin 0.2s ease;
+}
+
+.settings-panel.collapsed .settings-body {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  pointer-events: none;
 }
 
 .form-group {
@@ -232,6 +275,7 @@ body.dark-theme {
   color: var(--text-secondary);
   margin-top: 0.25rem;
 }
+
 
 /* Cards & Grid */
 .dashboard-grid {

@@ -40,8 +40,7 @@
         </button>
       </nav>
 
-      <div class="settings-panel">
-        <h3>Configuración</h3>
+      <div class="settings-panel" id="settingsPanel">
         <div class="form-group">
           <label for="apiProvider">Proveedor de API</label>
           <select id="apiProvider" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.75rem 1rem; font-size: 0.9rem; outline: none; margin-bottom: 0.5rem;">
@@ -50,34 +49,40 @@
             <option value="gemini">Gemini (gemini-1.5-flash)</option>
           </select>
         </div>
-        <div class="form-group">
-          <label for="apiKey">API Key (Cargada de .env / Manual)</label>
-          <input type="password" id="apiKey" placeholder="Clave de API... (o vacío para usar .env)" autocomplete="off">
-          <span class="help-text" id="apiKeyHelp" style="color: var(--text-secondary);">Se usarán las llaves del archivo .env por defecto.</span>
-        </div>
-        <div class="form-group">
-          <label for="handbookPath">Cargar desde /handbooks/</label>
-          <input type="text" id="handbookPath" placeholder="handbook.example.md" value="" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.75rem 1rem; font-size: 0.9rem; outline: none; margin-bottom: 0.5rem;">
-          <button id="loadHandbookPathBtn" class="btn btn-primary" style="width: 100%; padding: 0.5rem; font-size: 0.85rem;">Cargar Archivo</button>
-        </div>
-        <div class="form-group">
-          <label for="handbookUpload">O subir Handbook (.md, .txt, .pdf)</label>
-          <div class="file-drop-zone">
-            <input type="file" id="handbookUpload" accept=".md,.txt,.pdf">
-            <span class="file-name" id="uploadedFileName">Ninguno (Por defecto)</span>
+        <button type="button" class="settings-toggle" id="settingsToggle" aria-expanded="true" aria-controls="settingsBody">
+          <h3>Configuración</h3>
+          <svg class="settings-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+        <div class="settings-body" id="settingsBody">
+          <div class="form-group">
+            <label for="apiKey">API Key (Cargada de .env / Manual)</label>
+            <input type="password" id="apiKey" placeholder="Clave de API... (o vacío para usar .env)" autocomplete="off">
+            <span class="help-text" id="apiKeyHelp" style="color: var(--text-secondary);">Se usarán las llaves del archivo .env por defecto.</span>
+          </div>
+          <div class="form-group">
+            <label for="handbookPath">Cargar desde /handbooks/</label>
+            <input type="text" id="handbookPath" placeholder="handbook.example.md" value="" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.75rem 1rem; font-size: 0.9rem; outline: none; margin-bottom: 0.5rem;">
+            <button id="loadHandbookPathBtn" class="btn btn-primary" style="width: 100%; padding: 0.5rem; font-size: 0.85rem;">Cargar Archivo</button>
+          </div>
+          <div class="form-group">
+            <label for="handbookUpload">O subir Handbook (.md, .txt, .pdf)</label>
+            <div class="file-drop-zone">
+              <input type="file" id="handbookUpload" accept=".md,.txt,.pdf">
+              <span class="file-name" id="uploadedFileName">Ninguno (Por defecto)</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="candidateProfile">Perfil Candidato (cargado de candidate.md)</label>
+            <div class="profile-status" id="candidateProfileStatus" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">No cargado</div>
+            <textarea id="candidateProfile" placeholder="Contenido de candidate.md..." rows="3" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.5rem; font-size: 0.85rem; resize: none; outline: none;"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="interviewerProfile">Perfil Entrevistador (cargado de interviewer.md)</label>
+            <div class="profile-status" id="interviewerProfileStatus" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">No cargado</div>
+            <textarea id="interviewerProfile" placeholder="Contenido de interviewer.md..." rows="3" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.5rem; font-size: 0.85rem; resize: none; outline: none;"></textarea>
           </div>
         </div>
-        <div class="form-group">
-          <label for="candidateProfile">Perfil Candidato (cargado de candidate.md)</label>
-          <div class="profile-status" id="candidateProfileStatus" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">No cargado</div>
-          <textarea id="candidateProfile" placeholder="Contenido de candidate.md..." rows="3" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.5rem; font-size: 0.85rem; resize: none; outline: none;"></textarea>
-        </div>
-        <div class="form-group">
-          <label for="interviewerProfile">Perfil Entrevistador (cargado de interviewer.md)</label>
-          <div class="profile-status" id="interviewerProfileStatus" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">No cargado</div>
-          <textarea id="interviewerProfile" placeholder="Contenido de interviewer.md..." rows="3" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.5rem; font-size: 0.85rem; resize: none; outline: none;"></textarea>
-        </div>
-        <div class="form-group" style="margin-top: 1.5rem;">
+        <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
           <button id="shutdownBtn" class="btn btn-danger" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; background: var(--danger);">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
             Apagar Aplicación
