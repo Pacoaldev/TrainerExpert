@@ -42,6 +42,11 @@ let currentDrillIndex = 0;
 let activeSystemPrompt = '';
 let activeScenarioName = '';
 
+const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isListening = false;
+let baseTextBeforeDictation = '';
+
 function getManualKey(provider = activeProvider) {
   const cfg = PROVIDER_CONFIG[provider];
   return localStorage.getItem(cfg.storageKey)
@@ -63,6 +68,7 @@ const activeHandbookTitle = document.getElementById('activeHandbookTitle');
 const chatMessages = document.getElementById('chatMessages');
 const chatInput = document.getElementById('chatInput');
 const sendBtn = document.getElementById('sendBtn');
+const micBtn = document.getElementById('micBtn');
 const scenariosList = document.getElementById('scenariosList');
 const endInterviewBtn = document.getElementById('endInterviewBtn');
 const candidateProfileInput = document.getElementById('candidateProfile');
@@ -580,6 +586,7 @@ async function handleSendMessage() {
   const text = chatInput.value.trim();
   if (!text || !chatSession) return;
 
+  stopDictation();
   chatInput.value = '';
   appendMessage('user', text);
   await sendMessageWithFallback(text);
@@ -717,10 +724,15 @@ function updateUI() {
     if (chatSession) {
       chatInput.disabled = false;
       sendBtn.disabled = false;
-      chatInput.placeholder = "Escribe tu respuesta pensando en voz alta...";
+      if (micBtn) {
+        micBtn.disabled = !SpeechRecognitionCtor;
+        micBtn.title = SpeechRecognitionCtor ? 'Dictar por voz' : 'Dictado no soportado en este navegador';
+      }
+      chatInput.placeholder = "Escribe o dicta tu respuesta pensando en voz alta...";
     } else {
       chatInput.disabled = true;
       sendBtn.disabled = true;
+      if (micBtn) micBtn.disabled = true;
       chatInput.placeholder = "Selecciona un caso práctico en el Inicio para comenzar...";
     }
     const welcomeBubble = document.querySelector('#chatMessages .message.assistant:first-child .message-bubble');
@@ -730,7 +742,8 @@ function updateUI() {
   } else {
     chatInput.disabled = true;
     sendBtn.disabled = true;
-    chatInput.placeholder = "Introduce tu Gemini API Key en la barra lateral para empezar...";
+    if (micBtn) micBtn.disabled = true;
+    chatInput.placeholder = "Introduce tu API Key en la barra lateral para empezar...";
   }
 }
 
@@ -772,13 +785,96 @@ if (settingsToggle && settingsPanel) {
   });
 }
 
-// Initial setup
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('./sw.js').catch((err) => {
+    console.log('SW no registrado:', err);
+  });
+}
+
 async function initApp() {
   await loadEnvKeys();
   await loadDefaultProfiles();
   await loadDefaultHandbook();
   renderScenarios();
   loadDrill();
+  registerServiceWorker();
+}
+
+function setMicListening(on) {
+  isListening = on;
+  if (!micBtn) return;
+  micBtn.classList.toggle('listening', on);
+  micBtn.setAttribute('aria-pressed', String(on));
+  micBtn.title = on ? 'Detener dictado' : (SpeechRecognitionCtor ? 'Dictar por voz' : 'Dictado no soportado');
+}
+
+function stopDictation() {
+  if (recognition) {
+    try { recognition.stop(); } catch (_) { /* ignore */ }
+  }
+  setMicListening(false);
+}
+
+function startDictation() {
+  if (!SpeechRecognitionCtor || chatInput.disabled) return;
+
+  if (isListening) {
+    stopDictation();
+    return;
+  }
+
+  recognition = new SpeechRecognitionCtor();
+  recognition.lang = 'es-ES';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  baseTextBeforeDictation = chatInput.value;
+  if (baseTextBeforeDictation && !/\s$/.test(baseTextBeforeDictation)) {
+    baseTextBeforeDictation += ' ';
+  }
+
+  recognition.onresult = (event) => {
+    let finalChunk = '';
+    let interimChunk = '';
+    for (let i = 0; i < event.results.length; i++) {
+      const result = event.results[i];
+      if (result.isFinal) finalChunk += result[0].transcript;
+      else interimChunk += result[0].transcript;
+    }
+    chatInput.value = baseTextBeforeDictation + finalChunk + interimChunk;
+    chatInput.scrollTop = chatInput.scrollHeight;
+  };
+
+  recognition.onerror = (event) => {
+    console.warn('Dictado error:', event.error);
+    stopDictation();
+    if (event.error === 'not-allowed') {
+      alert('Permiso de micrófono denegado. Actívalo en el navegador para dictar.');
+    } else if (event.error === 'network') {
+      alert('Dictado no disponible (red/HTTPS). En móvil por IP HTTP el micrófono a veces está bloqueado.');
+    }
+  };
+
+  recognition.onend = () => {
+    setMicListening(false);
+  };
+
+  try {
+    recognition.start();
+    setMicListening(true);
+  } catch (err) {
+    console.error(err);
+    setMicListening(false);
+  }
+}
+
+if (micBtn) {
+  if (!SpeechRecognitionCtor) {
+    micBtn.disabled = true;
+    micBtn.title = 'Dictado no soportado en este navegador';
+  }
+  micBtn.addEventListener('click', startDictation);
 }
 
 initApp();

@@ -3,7 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b0d19">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TrainerExpert">
   <title>TrainerExpert - Simulador de Entrevistas con IA</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="logo.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -154,7 +162,12 @@
 
           <div class="chat-input-area">
             <textarea id="chatInput" placeholder="Escribe tu respuesta pensando en voz alta..." disabled></textarea>
-            <button id="sendBtn" class="btn btn-primary" disabled>Enviar</button>
+            <div class="chat-actions">
+              <button type="button" id="micBtn" class="btn btn-mic" disabled title="Dictar por voz" aria-label="Dictar por voz">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+              </button>
+              <button id="sendBtn" class="btn btn-primary" disabled>Enviar</button>
+            </div>
           </div>
         </div>
       </section>

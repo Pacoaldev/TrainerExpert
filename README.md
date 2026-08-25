@@ -4,29 +4,41 @@
 
 # TrainerExpert
 
-TrainerExpert es una aplicación interactiva diseñada para simular entrevistas técnicas. Permite a los usuarios practicar y evaluar sus habilidades de resolución de problemas con un entrevistador virtual impulsado por inteligencia artificial.
+Simulador de entrevistas técnicas orales con IA (perfil entrevistador + handbook + casos). Disponible como **web** y **PWA** instalable en Android (Chrome).
 
-## Características Principales
+## Características
 
-- **Perfiles Personalizables**: Configura dinámicamente la descripción del candidato y el estilo del entrevistador.
-- **Carga de Manuales (Handbooks)**: Sube guías o documentación técnica en formato PDF o Markdown para contextualizar las respuestas.
-- **Casos Prácticos**: Elige entre múltiples escenarios predefinidos para iniciar simulaciones guiadas.
-- **Soporte Multi-Proveedor**: Configuración de claves API para servicios como Gemini, OpenRouter y NVIDIA.
-- **Interfaz Fluida**: Diseñada con CSS moderno, modo oscuro y visualización limpia de mensajes.
+- Simulación oral conversacional (entrevistador vs candidato)
+- Dictado por voz → texto en el input → Enviar manual
+- Casos prácticos, handbook PDF/MD, perfiles en localStorage
+- Proveedores: OpenRouter, Gemini, NVIDIA (proxy local para CORS)
+- PWA: añadir a pantalla de inicio desde Chrome
 
-## Cómo Utilizar la Aplicación
+## Uso en escritorio
 
-1. **Configuración de API**:
-   - Introduce tu clave de API en la pestaña de ajustes.
-   - Selecciona el proveedor de servicios (OpenRouter, Gemini, NVIDIA).
+1. Arranca con `start.ps1` o `node server.js`
+2. Abre `http://localhost:8080`
+3. Configura proveedor/API (o `.env`)
+4. En **Inicio**, elige un caso → **Simulador Oral**
+5. Opcional: pulsa el micrófono, dicta, revisa el texto y **Enviar**
 
-2. **Definir Perfiles**:
-   - Ajusta los perfiles del candidato y del entrevistador en sus respectivos campos de texto.
-   - Estos archivos se guardan en el almacenamiento local del navegador (`localStorage`).
+## PWA en el móvil (misma Wi‑Fi)
 
-3. **Subir Documentación**:
-   - Carga el manual técnico de referencia para que la IA base sus preguntas en dicho material.
+1. En el PC, deja `node server.js` en marcha (escucha en `0.0.0.0:8080`)
+2. Averigua la IP local del PC (p.ej. `ipconfig` → IPv4)
+3. En Chrome Android abre `http://<IP>:8080`
+4. Menú → **Añadir a pantalla de inicio** / Instalar app
+5. Usa la app; las API keys se pueden pegar en Configuración
 
-4. **Iniciar Simulación**:
-   - Ve al panel de control.
-   - Selecciona un escenario práctico de la lista e inicia el simulacro de entrevista.
+### Micrófono en móvil
+
+El dictado usa la Web Speech API (mejor en Chromium). En **HTTP a una IP de LAN**, Chrome Android a veces **bloquea el micrófono** (origen no seguro). Si falla:
+
+- Prueba primero el dictado en el PC (Comet/Chrome)
+- En móvil: HTTPS local o un túnel con TLS; o dicta en el PC
+
+OpenRouter suele ir directo desde el navegador; NVIDIA/Gemini pasan por el proxy de `server.js` (el PC debe estar accesible).
+
+## Apagar
+
+El botón **Apagar Aplicación** detiene el servidor Node (y el proxy) y cierra Comet en Windows.

@@ -10,6 +10,7 @@ const MIME_TYPES = {
   '.css': 'text/css',
   '.js': 'application/javascript',
   '.json': 'application/json',
+  '.webmanifest': 'application/manifest+json',
   '.md': 'text/markdown',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -147,6 +148,7 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`TrainerExpert running at http://localhost:${PORT}`);
+  console.log(`LAN / PWA: http://<tu-IP-local>:${PORT}`);
 });
