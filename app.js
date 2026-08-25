@@ -7,20 +7,23 @@ const PROVIDER_CONFIG = {
     envPrefix: 'OPENROUTER_API_KEYS=',
     url: 'https://openrouter.ai/api/v1/chat/completions',
     model: 'openrouter/free',
-    storageKey: 'trainer_expert_api_key_openrouter'
+    storageKey: 'trainer_expert_api_key_openrouter',
+    useProxy: false
   },
   nvidia: {
     label: 'NVIDIA NIM',
     envPrefix: 'NVIDIA_API_KEYS=',
     url: 'https://integrate.api.nvidia.com/v1/chat/completions',
     model: 'meta/llama-3.1-8b-instruct',
-    storageKey: 'trainer_expert_api_key_nvidia'
+    storageKey: 'trainer_expert_api_key_nvidia',
+    useProxy: true
   },
   gemini: {
     label: 'Gemini',
     envPrefix: 'GEMINI_API_KEYS=',
     model: 'gemini-3.5-flash',
-    storageKey: 'trainer_expert_api_key_gemini'
+    storageKey: 'trainer_expert_api_key_gemini',
+    useProxy: true
   }
 };
 
@@ -403,12 +406,19 @@ function extractGeminiText(data) {
   return parts.map(p => p.text || '').join('');
 }
 
+function isRotatableError(error) {
+  const msg = String(error?.message || error || '');
+  // CORS / network / proxy down: rotating keys won't help
+  if (/failed to fetch|networkerror|load failed|proxy fall/i.test(msg)) return false;
+  // Auth / quota / rate-limit: try next key
+  return /HTTP (401|403|429)|API_KEY|invalid|quota|resource.?exhausted/i.test(msg);
+}
+
 async function callGemini(messages, key) {
   const cfg = PROVIDER_CONFIG.gemini;
   const system = messages.find(m => m.role === 'system')?.content || '';
   const turns = messages.filter(m => m.role !== 'system');
 
-  // Gemini exige que el historial empiece por "user"
   const contents = [];
   for (const msg of turns) {
     const role = msg.role === 'assistant' ? 'model' : 'user';
@@ -419,15 +429,19 @@ async function callGemini(messages, key) {
     contents.push({ role: 'user', parts: [{ text: 'Continúa la entrevista.' }] });
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent?key=${encodeURIComponent(key)}`;
-  const response = await fetch(url, {
+  const payload = {
+    provider: 'gemini',
+    key,
+    model: cfg.model,
+    systemInstruction: { parts: [{ text: system }] },
+    contents,
+    generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+  };
+
+  const response = await fetch('./api/proxy/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents,
-      generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
-    })
+    body: JSON.stringify(payload)
   });
   if (!response.ok) {
     throw new Error(`Gemini HTTP ${response.status}: ${await response.text()}`);
@@ -437,25 +451,40 @@ async function callGemini(messages, key) {
 
 async function callOpenAICompatible(messages, key) {
   const cfg = PROVIDER_CONFIG[activeProvider];
-  const response = await fetch(cfg.url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    },
-    body: JSON.stringify({
-      model: cfg.model,
-      messages,
-      temperature: 0.7,
-      max_tokens: 2048,
-      stream: false
-    })
-  });
+  const body = {
+    model: cfg.model,
+    messages,
+    temperature: 0.7,
+    max_tokens: 2048,
+    stream: false
+  };
+
+  let response;
+  if (cfg.useProxy) {
+    response = await fetch('./api/proxy/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: activeProvider, key, ...body })
+    });
+  } else {
+    response = await fetch(cfg.url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+  }
+
   if (!response.ok) {
     throw new Error(`${cfg.label} HTTP ${response.status}: ${await response.text()}`);
   }
   const data = await response.json();
+  if (data.error) {
+    throw new Error(`${cfg.label}: ${typeof data.error === 'string' ? data.error : JSON.stringify(data.error)}`);
+  }
   const content = data?.choices?.[0]?.message?.content;
   if (!content) {
     throw new Error(`${cfg.label} no devolvió contenido: ${JSON.stringify(data).slice(0, 300)}`);
@@ -573,11 +602,14 @@ async function sendMessageWithFallback(text) {
   } catch (error) {
     loadingDiv.remove();
     chatHistory.pop();
-    if (rotateApiKey()) {
-      appendMessage('assistant', `[Rotación automática de clave ${PROVIDER_CONFIG[activeProvider].label}. Reintentando...]`);
+    if (isRotatableError(error) && rotateApiKey()) {
+      appendMessage('assistant', `[Clave ${PROVIDER_CONFIG[activeProvider].label} inválida/agotada. Probando otra...]`);
       await sendMessageWithFallback(text);
     } else {
-      appendMessage('assistant', `Error (${PROVIDER_CONFIG[activeProvider].label}): ${error.message}`);
+      const hint = /failed to fetch/i.test(String(error.message))
+        ? ' (¿Servidor reiniciado? NVIDIA necesita el proxy local en server.js)'
+        : '';
+      appendMessage('assistant', `Error (${PROVIDER_CONFIG[activeProvider].label}): ${error.message}${hint}`);
     }
   }
 }
