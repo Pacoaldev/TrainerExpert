@@ -1,13 +1,36 @@
 import { techDrills, defaultScenarios } from './scenarios.js';
-import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
 import { marked } from 'https://esm.run/marked';
+
+const PROVIDER_CONFIG = {
+  openrouter: {
+    label: 'OpenRouter',
+    envPrefix: 'OPENROUTER_API_KEYS=',
+    url: 'https://openrouter.ai/api/v1/chat/completions',
+    model: 'openrouter/free',
+    storageKey: 'trainer_expert_api_key_openrouter'
+  },
+  nvidia: {
+    label: 'NVIDIA NIM',
+    envPrefix: 'NVIDIA_API_KEYS=',
+    url: 'https://integrate.api.nvidia.com/v1/chat/completions',
+    model: 'meta/llama-3.1-8b-instruct',
+    storageKey: 'trainer_expert_api_key_nvidia'
+  },
+  gemini: {
+    label: 'Gemini',
+    envPrefix: 'GEMINI_API_KEYS=',
+    model: 'gemini-3.5-flash',
+    storageKey: 'trainer_expert_api_key_gemini'
+  }
+};
+
+const HANDBOOK_PROMPT_MAX = 45000;
 
 // State variables
 let activeHandbookContent = '';
 let activeHandbookName = 'Ninguno';
 let apiKeys = [];
 let currentKeyIndex = 0;
-let geminiApiKey = localStorage.getItem('trainer_expert_api_key') || '';
 let activeProvider = localStorage.getItem('trainer_expert_api_provider') || 'openrouter';
 let activeTab = 'dashboard';
 let chatSession = null;
@@ -15,6 +38,19 @@ let chatHistory = [];
 let currentDrillIndex = 0;
 let activeSystemPrompt = '';
 let activeScenarioName = '';
+
+function getManualKey(provider = activeProvider) {
+  const cfg = PROVIDER_CONFIG[provider];
+  return localStorage.getItem(cfg.storageKey)
+    || (provider === 'openrouter' ? (localStorage.getItem('trainer_expert_api_key') || '') : '');
+}
+
+function setManualKey(value, provider = activeProvider) {
+  localStorage.setItem(PROVIDER_CONFIG[provider].storageKey, value);
+  if (provider === 'openrouter') {
+    localStorage.setItem('trainer_expert_api_key', value);
+  }
+}
 
 // DOM Elements
 const apiProviderSelect = document.getElementById('apiProvider');
@@ -44,9 +80,7 @@ shutdownBtn.addEventListener('click', async () => {
 
 // Initialize settings
 apiProviderSelect.value = activeProvider;
-if (geminiApiKey) {
-  apiKeyInput.value = geminiApiKey;
-}
+apiKeyInput.value = getManualKey();
 
 // PDF.js worker setup
 if (window.pdfjsLib) {
@@ -71,15 +105,13 @@ apiProviderSelect.addEventListener('change', (e) => {
   localStorage.setItem('trainer_expert_api_provider', activeProvider);
   chatSession = null;
   chatHistory = [];
+  apiKeyInput.value = getManualKey();
   loadEnvKeys();
 });
 
 async function loadEnvKeys() {
   apiKeys = [];
-  const keyPrefix = 
-    activeProvider === 'openrouter' ? 'OPENROUTER_API_KEYS=' :
-    activeProvider === 'nvidia' ? 'NVIDIA_API_KEYS=' :
-    'GEMINI_API_KEYS=';
+  const keyPrefix = PROVIDER_CONFIG[activeProvider].envPrefix;
 
   try {
     const response = await fetch('./.env');
@@ -110,11 +142,12 @@ async function loadEnvKeys() {
   } catch (e) {
     console.log('No se pudo cargar el archivo .env automáticamente:', e);
   }
-  
-  if (geminiApiKey) {
-    apiKeys = [geminiApiKey, ...apiKeys.filter(k => k !== geminiApiKey)];
+
+  const manual = getManualKey().trim();
+  if (manual) {
+    apiKeys = [manual, ...apiKeys.filter(k => k !== manual)];
   }
-  
+
   currentKeyIndex = 0;
   updateUI();
 }
@@ -216,8 +249,7 @@ document.querySelectorAll('.nav-item').forEach(button => {
 
 // Settings events
 apiKeyInput.addEventListener('input', (e) => {
-  geminiApiKey = e.target.value.trim();
-  localStorage.setItem('trainer_expert_api_key', geminiApiKey);
+  setManualKey(e.target.value.trim());
   loadEnvKeys();
 });
 
@@ -292,6 +324,10 @@ function buildSystemPrompt(scenarioName) {
     ? `El candidato eligió practicar alrededor de: ${scenario.caseTopic}. Úsalo como hilo conductor natural cuando toque el caso práctico (no como examen cerrado). Posibles profundizaciones (elige según lo que diga, no las leas en lista):\n${scenario.deepening.map(q => `- ${q}`).join('\n')}`
     : 'Cuando toque el caso práctico, elige un problema real del dominio del handbook (pedidos, stock, informes, importación…).';
 
+  const handbookForPrompt = activeHandbookContent.length > HANDBOOK_PROMPT_MAX
+    ? activeHandbookContent.slice(0, HANDBOOK_PROMPT_MAX) + '\n\n[...handbook truncado por límite de contexto...]'
+    : activeHandbookContent;
+
   return `
 Eres el entrevistador del perfil de abajo. Estás haciendo una entrevista técnica ORAL presencial de 45–60 minutos para un puesto de Full-Stack Engineer.
 
@@ -309,7 +345,7 @@ ${candidateProfile || 'Perfil general de ingeniería full-stack.'}
 
 Handbook / material de referencia (contexto de producto, dominio y casos típicos — NO es un guion que hay que recitar; es para que sepas de qué habla la empresa y qué tipo de problemas suelen salir):
 ===
-${activeHandbookContent}
+${handbookForPrompt}
 ===
 
 ${topicHint}
@@ -358,16 +394,86 @@ function seedInterviewChat(greeting) {
   chatHistory = [{ role: 'assistant', content: greeting }];
 }
 
-async function initGeminiSession(greeting) {
+function extractGeminiText(data) {
+  const parts = data?.candidates?.[0]?.content?.parts;
+  if (!parts?.length) {
+    const blocked = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
+    throw new Error(blocked ? `Gemini bloqueó la respuesta (${blocked})` : 'Gemini no devolvió texto');
+  }
+  return parts.map(p => p.text || '').join('');
+}
+
+async function callGemini(messages, key) {
+  const cfg = PROVIDER_CONFIG.gemini;
+  const system = messages.find(m => m.role === 'system')?.content || '';
+  const turns = messages.filter(m => m.role !== 'system');
+
+  // Gemini exige que el historial empiece por "user"
+  const contents = [];
+  for (const msg of turns) {
+    const role = msg.role === 'assistant' ? 'model' : 'user';
+    if (!contents.length && role === 'model') continue;
+    contents.push({ role, parts: [{ text: msg.content }] });
+  }
+  if (!contents.length) {
+    contents.push({ role: 'user', parts: [{ text: 'Continúa la entrevista.' }] });
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent?key=${encodeURIComponent(key)}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents,
+      generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`Gemini HTTP ${response.status}: ${await response.text()}`);
+  }
+  return extractGeminiText(await response.json());
+}
+
+async function callOpenAICompatible(messages, key) {
+  const cfg = PROVIDER_CONFIG[activeProvider];
+  const response = await fetch(cfg.url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      model: cfg.model,
+      messages,
+      temperature: 0.7,
+      max_tokens: 2048,
+      stream: false
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`${cfg.label} HTTP ${response.status}: ${await response.text()}`);
+  }
+  const data = await response.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error(`${cfg.label} no devolvió contenido: ${JSON.stringify(data).slice(0, 300)}`);
+  }
+  return content;
+}
+
+async function requestModelReply(historyMessages) {
   const key = getActiveKey();
-  const genAI = new GoogleGenerativeAI(key);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
-    systemInstruction: activeSystemPrompt
-  });
-  chatSession = model.startChat({
-    history: [{ role: 'model', parts: [{ text: greeting }] }]
-  });
+  if (!key) throw new Error('No hay clave API cargada para este proveedor.');
+  const messages = [
+    { role: 'system', content: activeSystemPrompt },
+    ...historyMessages
+  ];
+  if (activeProvider === 'gemini') {
+    return callGemini(messages, key);
+  }
+  return callOpenAICompatible(messages, key);
 }
 
 function getInterviewerData(profileText) {
@@ -411,7 +517,10 @@ function getInterviewerData(profileText) {
 // AI Interview Logic
 async function startInterview(scenarioName = '') {
   const key = getActiveKey();
-  if (!key) return;
+  if (!key) {
+    alert(`No hay clave API para ${PROVIDER_CONFIG[activeProvider].label}. Revisa .env o introduce una clave manual.`);
+    return;
+  }
 
   if (chatSession && !scenarioName) return;
 
@@ -423,32 +532,15 @@ async function startInterview(scenarioName = '') {
   activeSystemPrompt = buildSystemPrompt(scenarioName);
   const greeting = buildInterviewGreeting(scenarioName);
   seedInterviewChat(greeting);
-
-  if (activeProvider === 'gemini') {
-    try {
-      await initGeminiSession(greeting);
-      updateUI();
-      chatMessages.innerHTML = '';
-      appendMessage('assistant', greeting);
-    } catch (error) {
-      if (rotateApiKey()) {
-        await startInterview(scenarioName);
-      } else {
-        chatMessages.innerHTML = `<div class="message assistant"><div class="message-bubble text-danger">Error: ${error.message} (Todas las claves fallaron)</div></div>`;
-      }
-    }
-  } else {
-    chatSession = { active: true };
-    updateUI();
-    chatMessages.innerHTML = '';
-    appendMessage('assistant', greeting);
-  }
+  chatSession = { active: true, provider: activeProvider };
+  updateUI();
+  chatMessages.innerHTML = '';
+  appendMessage('assistant', greeting);
 }
 
 function appendMessage(role, text) {
   const div = document.createElement('div');
   div.className = `message ${role}`;
-  // Use marked.parse to render markdown formatting like bold, lists, and newlines
   const htmlContent = marked.parse(text);
   div.innerHTML = `<div class="message-bubble">${htmlContent}</div>`;
   chatMessages.appendChild(div);
@@ -472,56 +564,9 @@ async function sendMessageWithFallback(text) {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 
   chatHistory.push({ role: 'user', content: text });
-  const key = getActiveKey();
 
   try {
-    let replyText = '';
-    
-    if (activeProvider === 'gemini') {
-      const response = await chatSession.sendMessage(text);
-      replyText = response.response.text();
-    } else if (activeProvider === 'openrouter') {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${key}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "openrouter/free",
-          messages: [
-            { role: "system", content: activeSystemPrompt },
-            ...chatHistory
-          ]
-        })
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-      }
-      const data = await response.json();
-      replyText = data.choices[0].message.content;
-    } else if (activeProvider === 'nvidia') {
-      const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${key}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "meta/llama-3.1-8b-instruct",
-          messages: [
-            { role: "system", content: activeSystemPrompt },
-            ...chatHistory
-          ]
-        })
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-      }
-      const data = await response.json();
-      replyText = data.choices[0].message.content;
-    }
-
+    const replyText = await requestModelReply(chatHistory);
     loadingDiv.remove();
     chatHistory.push({ role: 'assistant', content: replyText });
     appendMessage('assistant', replyText);
@@ -529,10 +574,10 @@ async function sendMessageWithFallback(text) {
     loadingDiv.remove();
     chatHistory.pop();
     if (rotateApiKey()) {
-      appendMessage('assistant', `[Rotación automática de clave API por fallo. Reintentando...]`);
+      appendMessage('assistant', `[Rotación automática de clave ${PROVIDER_CONFIG[activeProvider].label}. Reintentando...]`);
       await sendMessageWithFallback(text);
     } else {
-      appendMessage('assistant', `Error: ${error.message}`);
+      appendMessage('assistant', `Error (${PROVIDER_CONFIG[activeProvider].label}): ${error.message}`);
     }
   }
 }
@@ -548,52 +593,19 @@ chatInput.addEventListener('keydown', (e) => {
 endInterviewBtn.addEventListener('click', async () => {
   if (!chatSession) return;
   appendMessage('assistant', 'Analizando desempeño final de la entrevista...');
-  
+
   const text = 'Quiero terminar la entrevista. Eres Tech Lead evaluando a un candidato a Full-Stack Engineer. Hazme un resumen de mi desempeño: puntos fuertes, áreas de mejora y una señal clara (sí / no / dudoso), sin rodeos.';
   chatHistory.push({ role: 'user', content: text });
-  const key = getActiveKey();
 
   try {
-    let replyText = '';
-    
-    if (activeProvider === 'gemini') {
-      const response = await chatSession.sendMessage(text);
-      replyText = response.response.text();
-    } else {
-      const url = activeProvider === 'openrouter' 
-        ? "https://openrouter.ai/api/v1/chat/completions" 
-        : "https://integrate.api.nvidia.com/v1/chat/completions";
-      const model = activeProvider === 'openrouter' 
-        ? "openrouter/free" 
-        : "meta/llama-3.1-8b-instruct";
-      
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${key}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            { role: "system", content: activeSystemPrompt },
-            ...chatHistory
-          ]
-        })
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-      }
-      const data = await response.json();
-      replyText = data.choices[0].message.content;
-    }
-
+    const replyText = await requestModelReply(chatHistory);
     appendMessage('assistant', replyText);
     endInterviewBtn.style.display = 'none';
     chatInput.disabled = true;
     sendBtn.disabled = true;
   } catch (error) {
-    appendMessage('assistant', `Error al evaluar: ${error.message}`);
+    chatHistory.pop();
+    appendMessage('assistant', `Error al evaluar (${PROVIDER_CONFIG[activeProvider].label}): ${error.message}`);
   }
 });
 
@@ -635,13 +647,10 @@ function updateUI() {
   // API Keys Status
   const apiKeyHelp = document.getElementById('apiKeyHelp');
   if (apiKeys.length > 0) {
-    apiKeyHelp.textContent = `API cargada exitosamente desde archivo .env (${apiKeys.length} claves disponibles)`;
-    apiKeyHelp.style.color = 'var(--success)';
-  } else if (geminiApiKey) {
-    apiKeyHelp.textContent = 'API cargada manualmente';
+    apiKeyHelp.textContent = `API ${PROVIDER_CONFIG[activeProvider].label}: ${apiKeys.length} clave(s) disponibles (.env / manual)`;
     apiKeyHelp.style.color = 'var(--success)';
   } else {
-    apiKeyHelp.textContent = 'Introduce una clave manualmente o añade un archivo .env';
+    apiKeyHelp.textContent = `Introduce una clave de ${PROVIDER_CONFIG[activeProvider].label} o añade un archivo .env`;
     apiKeyHelp.style.color = 'var(--text-secondary)';
   }
 
