@@ -752,23 +752,50 @@ const sidebarEl = document.getElementById('sidebar');
 const appContainerEl = document.getElementById('appContainer');
 const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
 const showSidebarBtn = document.getElementById('showSidebarBtn');
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+
+function isMobileLayout() {
+  return window.matchMedia('(max-width: 768px)').matches;
+}
 
 function hideSidebar() {
   sidebarEl.classList.add('hidden');
   appContainerEl.classList.add('sidebar-hidden');
-  showSidebarBtn.style.display = 'flex';
+  if (showSidebarBtn) showSidebarBtn.style.display = 'flex';
 }
 
 function showSidebar() {
   sidebarEl.classList.remove('hidden');
   appContainerEl.classList.remove('sidebar-hidden');
-  showSidebarBtn.style.display = 'none';
+  if (showSidebarBtn) showSidebarBtn.style.display = 'none';
+}
+
+function syncMobileChrome() {
+  if (isMobileLayout()) {
+    hideSidebar();
+  } else if (appContainerEl.classList.contains('sidebar-hidden')) {
+    if (showSidebarBtn) showSidebarBtn.style.display = 'flex';
+  } else if (showSidebarBtn) {
+    showSidebarBtn.style.display = 'none';
+  }
 }
 
 if (toggleSidebarBtn && showSidebarBtn) {
   toggleSidebarBtn.addEventListener('click', hideSidebar);
   showSidebarBtn.addEventListener('click', showSidebar);
 }
+
+if (sidebarBackdrop) {
+  sidebarBackdrop.addEventListener('click', hideSidebar);
+}
+
+document.querySelectorAll('.nav-item').forEach((button) => {
+  button.addEventListener('click', () => {
+    if (isMobileLayout()) hideSidebar();
+  });
+});
+
+window.addEventListener('resize', syncMobileChrome);
 
 const settingsPanel = document.getElementById('settingsPanel');
 const settingsToggle = document.getElementById('settingsToggle');
@@ -799,6 +826,7 @@ async function initApp() {
   renderScenarios();
   loadDrill();
   registerServiceWorker();
+  syncMobileChrome();
 }
 
 function setMicListening(on) {
