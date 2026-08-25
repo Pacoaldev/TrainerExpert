@@ -844,8 +844,32 @@ function stopDictation() {
   setMicListening(false);
 }
 
+function micNeedsHttps() {
+  // localhost HTTP is a secure context; LAN IP HTTP is not (Chrome blocks mic)
+  if (window.isSecureContext) return false;
+  const host = location.hostname;
+  return host !== 'localhost' && host !== '127.0.0.1';
+}
+
+function micBlockedMessage() {
+  const host = location.hostname || '<tu-IP>';
+  return (
+    'En el móvil Chrome bloquea el micrófono en HTTP.\n\n' +
+    '1) En el PC deja TrainerExpert en marcha\n' +
+    '2) En el móvil abre:\n   https://' + host + ':8443\n' +
+    '3) Pulsa Avanzado → Continuar / Acceder al sitio\n' +
+    '4) Vuelve a usar el micrófono\n\n' +
+    '(El triángulo de "No seguro" es normal con certificado local.)'
+  );
+}
+
 function startDictation() {
   if (!SpeechRecognitionCtor || chatInput.disabled) return;
+
+  if (micNeedsHttps()) {
+    alert(micBlockedMessage());
+    return;
+  }
 
   if (isListening) {
     stopDictation();
@@ -878,9 +902,10 @@ function startDictation() {
     console.warn('Dictado error:', event.error);
     stopDictation();
     if (event.error === 'not-allowed') {
-      alert('Permiso de micrófono denegado. Actívalo en el navegador para dictar.');
+      if (micNeedsHttps()) alert(micBlockedMessage());
+      else alert('Permiso de micrófono denegado. En Ajustes del sitio de Chrome, permite el micrófono para esta URL.');
     } else if (event.error === 'network') {
-      alert('Dictado no disponible (red/HTTPS). En móvil por IP HTTP el micrófono a veces está bloqueado.');
+      alert('Dictado no disponible (error de red del reconocimiento de voz).');
     }
   };
 

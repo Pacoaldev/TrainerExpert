@@ -1,9 +1,13 @@
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 
 const PORT = 8080;
+const HTTPS_PORT = 8443;
+const PFX_PATH = path.join(__dirname, 'certs', 'dev.pfx');
+const PFX_PASS = 'trainerexpert';
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -16,7 +20,9 @@ const MIME_TYPES = {
   '.jpg': 'image/jpeg',
   '.gif': 'image/gif',
   '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon'
+  '.ico': 'image/x-icon',
+  '.cer': 'application/pkix-cert',
+  '.pfx': 'application/x-pkcs12'
 };
 
 const OPENAI_TARGETS = {
@@ -93,7 +99,7 @@ async function proxyGemini(res, body) {
   res.end(text);
 }
 
-const server = http.createServer(async (req, res) => {
+async function handleRequest(req, res) {
   const urlPath = (req.url || '/').split('?')[0];
 
   if (urlPath === '/api/shutdown' && req.method === 'POST') {
@@ -103,7 +109,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Proxy for providers that block browser CORS (NVIDIA) and keep Gemini consistent
   if (urlPath === '/api/proxy/chat' && req.method === 'POST') {
     try {
       const raw = await readBody(req);
@@ -146,9 +151,27 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': contentType });
     fs.createReadStream(filePath).pipe(res);
   });
+}
+
+const httpServer = http.createServer(handleRequest);
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`HTTP  http://localhost:${PORT}`);
+  console.log(`HTTP  http://<tu-IP>:${PORT}  (sin micrófono en móvil)`);
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`TrainerExpert running at http://localhost:${PORT}`);
-  console.log(`LAN / PWA: http://<tu-IP-local>:${PORT}`);
-});
+if (fs.existsSync(PFX_PATH)) {
+  const httpsServer = https.createServer(
+    { pfx: fs.readFileSync(PFX_PATH), passphrase: PFX_PASS },
+    handleRequest
+  );
+  httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
+    console.log(`HTTPS https://localhost:${HTTPS_PORT}`);
+    console.log(`HTTPS https://<tu-IP>:${HTTPS_PORT}  ← usa esta URL en el móvil para el mic`);
+    console.log(`      (Chrome: Avanzado → Continuar al sitio)`);
+  });
+} else {
+  console.log('');
+  console.log('Sin certificado HTTPS. En el móvil el micrófono NO funcionará por HTTP.');
+  console.log('Genera el cert:  powershell -ExecutionPolicy Bypass -File .\\scripts\\generate-certs.ps1');
+  console.log('Luego reinicia node server.js y abre https://<IP>:8443');
+}

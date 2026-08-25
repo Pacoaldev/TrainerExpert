@@ -4,41 +4,54 @@
 
 # TrainerExpert
 
-Simulador de entrevistas técnicas orales con IA (perfil entrevistador + handbook + casos). Disponible como **web** y **PWA** instalable en Android (Chrome).
+Simulador de entrevistas técnicas orales con IA. Web + PWA. Dictado por voz en el Simulador Oral.
 
-## Características
+## Uso en PC
 
-- Simulación oral conversacional (entrevistador vs candidato)
-- Dictado por voz → texto en el input → Enviar manual
-- Casos prácticos, handbook PDF/MD, perfiles en localStorage
-- Proveedores: OpenRouter, Gemini, NVIDIA (proxy local para CORS)
-- PWA: añadir a pantalla de inicio desde Chrome
+```powershell
+.\start.ps1
+```
 
-## Uso en escritorio
+Abre `http://localhost:8080` (el micrófono en el PC funciona en localhost).
 
-1. Arranca con `start.ps1` o `node server.js`
-2. Abre `http://localhost:8080`
-3. Configura proveedor/API (o `.env`)
-4. En **Inicio**, elige un caso → **Simulador Oral**
-5. Opcional: pulsa el micrófono, dicta, revisa el texto y **Enviar**
+## Micrófono en el móvil (importante)
 
-## PWA en el móvil (misma Wi‑Fi)
+Chrome **bloquea el micrófono** en `http://192.168.x.x` (HTTP a una IP). No es un fallo de permisos de Android: hace falta **HTTPS**.
 
-1. En el PC, deja `node server.js` en marcha (escucha en `0.0.0.0:8080`)
-2. Averigua la IP local del PC (p.ej. `ipconfig` → IPv4)
-3. En Chrome Android abre `http://<IP>:8080`
-4. Menú → **Añadir a pantalla de inicio** / Instalar app
-5. Usa la app; las API keys se pueden pegar en Configuración
+### Pasos
 
-### Micrófono en móvil
+1. En el PC (solo la primera vez):
 
-El dictado usa la Web Speech API (mejor en Chromium). En **HTTP a una IP de LAN**, Chrome Android a veces **bloquea el micrófono** (origen no seguro). Si falla:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\generate-certs.ps1
+```
 
-- Prueba primero el dictado en el PC (Comet/Chrome)
-- En móvil: HTTPS local o un túnel con TLS; o dicta en el PC
+(`start.ps1` también lo genera solo si falta.)
 
-OpenRouter suele ir directo desde el navegador; NVIDIA/Gemini pasan por el proxy de `server.js` (el PC debe estar accesible).
+2. Arranca el servidor (`.\start.ps1` o `node server.js`). Debe escuchar:
+   - `http://localhost:8080`
+   - `https://0.0.0.0:8443`
+
+3. En el móvil (misma Wi‑Fi), abre:
+
+```text
+https://192.168.1.130:8443
+```
+
+(sustituye por tu IP; en el PC: `ipconfig`)
+
+4. Chrome mostrará aviso de certificado. Pulsa **Avanzado** → **Continuar / Acceder al sitio** (es normal: certificado local).
+
+5. Cuando Chrome pida el micrófono → **Permitir**.
+
+6. Opcional: menú → Añadir a pantalla de inicio (PWA).
+
+Si sigues en `http://192.168.1.130:8080`, el micrófono **no** funcionará aunque actives todos los permisos del sistema.
+
+## Firewall Windows
+
+Si `https://IP:8443` no carga desde el móvil, permite Node en el firewall (puertos 8080 y 8443) o crea una regla de entrada TCP.
 
 ## Apagar
 
-El botón **Apagar Aplicación** detiene el servidor Node (y el proxy) y cierra Comet en Windows.
+**Apagar Aplicación** detiene el servidor Node (HTTP+HTTPS/proxy) y cierra Comet en Windows.

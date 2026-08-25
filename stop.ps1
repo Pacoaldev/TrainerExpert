@@ -1,12 +1,18 @@
 # Stop-TrainerExpert.ps1
-$connections = Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue
-if ($connections) {
+$stopped = $false
+foreach ($port in 8080, 8443) {
+  $connections = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
+  if ($connections) {
     $pids = $connections | Select-Object -ExpandProperty OwningProcess -Unique
     foreach ($procId in $pids) {
-        Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+      Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
     }
-    Write-Output "TrainerExpert detenido con exito."
-} else {
-    Write-Output "TrainerExpert ya esta detenido (puerto 8080 libre)."
+    $stopped = $true
+  }
 }
-Start-Sleep -Seconds 2
+if ($stopped) {
+  Write-Output "TrainerExpert detenido (puertos 8080/8443)."
+} else {
+  Write-Output "TrainerExpert ya esta detenido."
+}
+Start-Sleep -Seconds 1
