@@ -2,7 +2,8 @@ certs/
 .gemini/
 .agents/
 .git/
-/handbooks
+/handbooks/*
+!/handbooks/handbook.example.md
 .env
 candidate.md
 interviewer.md

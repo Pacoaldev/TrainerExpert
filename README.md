@@ -6,6 +6,18 @@
 
 Simulador de entrevistas técnicas orales con IA. Web + PWA. Dictado por voz en el Simulador Oral.
 
+## Configuración inicial
+
+Copia los archivos de ejemplo y rellena tus datos locales (no se suben a git):
+
+```powershell
+Copy-Item .env.example .env
+Copy-Item candidate.example.md candidate.md
+Copy-Item interviewer.example.md interviewer.md
+```
+
+Añade tus claves API en `.env` y, si quieres, un handbook propio en `handbooks/` (puedes partir de `handbooks/handbook.example.md`).
+
 ## Uso en PC
 
 ```powershell
@@ -35,10 +47,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\generate-certs.ps1
 3. En el móvil (misma Wi‑Fi), abre:
 
 ```text
-https://192.168.1.130:8443
+https://<tu-IP>:8443
 ```
 
-(sustituye por tu IP; en el PC: `ipconfig`)
+(sustituye `<tu-IP>` por la IP de tu PC en la red local; en Windows: `ipconfig`)
 
 4. Chrome mostrará aviso de certificado. Pulsa **Avanzado** → **Continuar / Acceder al sitio** (es normal: certificado local).
 
@@ -46,7 +58,7 @@ https://192.168.1.130:8443
 
 6. Opcional: menú → Añadir a pantalla de inicio (PWA).
 
-Si sigues en `http://192.168.1.130:8080`, el micrófono **no** funcionará aunque actives todos los permisos del sistema.
+Si sigues en `http://<tu-IP>:8080`, el micrófono **no** funcionará aunque actives todos los permisos del sistema.
 
 ## Firewall Windows
 

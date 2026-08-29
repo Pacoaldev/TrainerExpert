@@ -1,5 +1,5 @@
 # Start-TrainerExpert.ps1
-$projectDir = "c:\Users\spano\Documents\PROYECTOS\TrainerExpert"
+$projectDir = $PSScriptRoot
 $pfx = Join-Path $projectDir "certs\dev.pfx"
 
 if (-not (Test-Path $pfx)) {
@@ -20,6 +20,6 @@ Start-Sleep -Seconds 1
 
 Start-Process -FilePath "cmd.exe" -ArgumentList "/c node server.js" -WorkingDirectory $projectDir -WindowStyle Hidden
 Start-Sleep -Seconds 3
-Start-Process -FilePath "C:\Program Files\Perplexity\Comet\Application\comet.exe" -ArgumentList "http://localhost:8080"
+Start-Process "http://localhost:8080"
 Write-Host "PC:  http://localhost:8080"
 Write-Host "Movil (MIC): https://<tu-IP>:8443  (acepta el aviso del certificado)"

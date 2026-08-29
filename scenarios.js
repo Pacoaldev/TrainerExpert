@@ -29,12 +29,12 @@ export const defaultScenarios = [
   {
     id: 1,
     name: "Caso 1: Módulo de pedidos",
-    desc: "Transacciones, estados del pedido y escandallos.",
-    caseTopic: "módulo de pedidos en un restaurante (comandas, estados, escandallos)",
+    desc: "Transacciones, estados del pedido y flujo de fulfillment.",
+    caseTopic: "módulo de pedidos en un e-commerce (estados, pagos, fulfillment)",
     deepening: [
       "¿Cómo diseñarías el módulo de pedidos?",
       "¿Cómo diseñas la base de datos?",
-      "¿Y si escalamos a 500 restaurantes simultáneos?",
+      "¿Y si escalamos a miles de pedidos por hora?",
       "¿Qué pasa si dos usuarios descuentan stock a la vez?",
       "¿Cómo evitas bloqueos si el proceso es lento?",
       "¿Cómo gestionas fallos en procesos en background?"
@@ -57,7 +57,7 @@ export const defaultScenarios = [
     id: 3,
     name: "Caso 3: Concurrencia y descuento de stock",
     desc: "Row locking, conditional update e inventario.",
-    caseTopic: "descuento concurrente de stock en inventario multi-restaurante",
+    caseTopic: "descuento concurrente de stock en inventario multi-almacén",
     deepening: [
       "¿Cómo modelarías el stock y las reservas?",
       "¿Qué pasa si dos usuarios descuentan stock a la vez?",

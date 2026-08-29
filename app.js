@@ -252,15 +252,16 @@ async function loadDefaultProfiles() {
 
 // Load default handbook
 async function loadDefaultHandbook() {
+  const defaultFile = 'handbook.example.md';
   try {
-    const response = await fetch('./handbooks/handbook.example.md');
+    const response = await fetch(`./handbooks/${defaultFile}`);
     if (response.ok) {
       activeHandbookContent = await response.text();
-      activeHandbookName = 'handbook.example.md';
-      activeHandbookTitle.textContent = 'handbook.example.md';
+      activeHandbookName = defaultFile;
+      activeHandbookTitle.textContent = defaultFile;
       console.log('Default handbook cargado de forma correcta.');
     } else {
-      activeHandbookContent = 'Por favor, añade un archivo a /handbooks/handbook.example.md o introduce uno en "Cargar desde...".';
+      activeHandbookContent = 'Añade un handbook en /handbooks/ o súbelo desde Configuración.';
     }
   } catch (e) {
     console.error('Error cargando default handbook:', e);
@@ -539,8 +540,8 @@ function getInterviewerData(profileText) {
   const info = {
     name: 'Tech Lead',
     role: 'Backend Tech Lead',
-    stack: 'Laravel',
-    domain: 'SaaS B2B'
+    stack: 'backend y frontend',
+    domain: 'software B2B'
   };
 
   if (!profileText) return info;
@@ -657,7 +658,8 @@ endInterviewBtn.addEventListener('click', async () => {
   if (!chatSession) return;
   appendMessage('assistant', 'Analizando desempeño final de la entrevista...');
 
-  const text = 'Quiero terminar la entrevista. Eres Tech Lead evaluando a un candidato a Full-Stack Engineer. Hazme un resumen de mi desempeño: puntos fuertes, áreas de mejora y una señal clara (sí / no / dudoso), sin rodeos.';
+  const interviewer = getInterviewerData(interviewerProfileInput.value);
+  const text = `Quiero terminar la entrevista. Eres ${interviewer.name} evaluando a un candidato a Full-Stack Engineer. Hazme un resumen de mi desempeño: puntos fuertes, áreas de mejora y una señal clara (sí / no / dudoso), sin rodeos.`;
   chatHistory.push({ role: 'user', content: text });
 
   try {
