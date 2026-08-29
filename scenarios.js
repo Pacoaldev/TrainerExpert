@@ -42,7 +42,20 @@ export const defaultScenarios = [
   },
   {
     id: 2,
-    name: "Caso 2: Generación asíncrona de informes",
+    name: "Caso 2: Autenticación y sesiones",
+    desc: "Login, tokens, refresh y revocación de acceso.",
+    caseTopic: "sistema de autenticación para una app web (JWT, refresh tokens, logout)",
+    deepening: [
+      "¿Cómo modelarías login, registro y recuperación de contraseña?",
+      "¿Access token + refresh token o solo sesión en servidor? ¿Por qué?",
+      "¿Dónde guardas el refresh token en el cliente y qué riesgos tiene?",
+      "¿Cómo invalidas sesiones al cambiar contraseña o cerrar en todos los dispositivos?",
+      "¿Qué harías ante un token robado o una fuga de claves?"
+    ]
+  },
+  {
+    id: 3,
+    name: "Caso 3: Generación asíncrona de informes",
     desc: "Asincronía con colas SQS, S3 y polling de estados.",
     caseTopic: "generación asíncrona de informes pesados (colas, S3, polling de estado)",
     deepening: [
@@ -54,8 +67,21 @@ export const defaultScenarios = [
     ]
   },
   {
-    id: 3,
-    name: "Caso 3: Concurrencia y descuento de stock",
+    id: 4,
+    name: "Caso 4: API pública y rate limiting",
+    desc: "Cuotas, throttling y protección ante abuso.",
+    caseTopic: "API REST expuesta a terceros con límites por cliente y clave API",
+    deepening: [
+      "¿Cómo identificas y autenticas a cada consumidor de la API?",
+      "¿Dónde aplicarías rate limiting: gateway, app o ambos?",
+      "¿Cómo implementas cuotas por minuto sin golpear la base de datos en cada request?",
+      "¿Qué devuelves al cliente cuando supera el límite (429, headers, retry-after)?",
+      "¿Cómo detectas y bloqueas patrones de abuso o scraping agresivo?"
+    ]
+  },
+  {
+    id: 5,
+    name: "Caso 5: Concurrencia y descuento de stock",
     desc: "Row locking, conditional update e inventario.",
     caseTopic: "descuento concurrente de stock en inventario multi-almacén",
     deepening: [
@@ -67,8 +93,21 @@ export const defaultScenarios = [
     ]
   },
   {
-    id: 4,
-    name: "Caso 4: Importación masiva de productos",
+    id: 6,
+    name: "Caso 6: Reservas y conflictos de agenda",
+    desc: "Slots, solapes y confirmaciones en un calendario compartido.",
+    caseTopic: "sistema de citas o reservas con calendario (solapes, cancelaciones, recordatorios)",
+    deepening: [
+      "¿Cómo modelas franjas horarias, recursos y disponibilidad?",
+      "¿Qué pasa si dos usuarios reservan el mismo slot a la vez?",
+      "¿Cómo gestionas cancelaciones, reprogramaciones y no-shows?",
+      "¿Envías recordatorios por email/push sin duplicar envíos?",
+      "¿Cómo escalas si hay miles de reservas diarias en distintas zonas horarias?"
+    ]
+  },
+  {
+    id: 7,
+    name: "Caso 7: Importación masiva de productos",
     desc: "Procesamiento por lotes (chunks) y workers.",
     caseTopic: "importación masiva de catálogo de productos (CSV, chunks, workers)",
     deepening: [
@@ -77,6 +116,19 @@ export const defaultScenarios = [
       "¿Qué haces si una fila falla validación a mitad del lote?",
       "¿Cómo informas al usuario del progreso?",
       "¿Cómo escala si el catálogo tiene 500.000 filas?"
+    ]
+  },
+  {
+    id: 8,
+    name: "Caso 8: Webhooks de pagos",
+    desc: "Eventos externos, idempotencia y reconciliación.",
+    caseTopic: "integración con pasarela de pagos vía webhooks (éxito, fallo, reembolso)",
+    deepening: [
+      "¿Cómo verificas que el webhook viene realmente del proveedor?",
+      "¿Qué haces si el mismo evento llega dos veces?",
+      "¿Actualizas el pedido antes o después de confirmar el pago? ¿Por qué?",
+      "¿Cómo reconcilias discrepancias entre tu BD y el estado del proveedor?",
+      "¿Qué pasa si tu servidor está caído cuando llega el webhook?"
     ]
   }
 ];
