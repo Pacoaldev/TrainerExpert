@@ -29,6 +29,47 @@ const OPENAI_TARGETS = {
   openrouter: 'https://openrouter.ai/api/v1/chat/completions'
 };
 
+const ENV_PREFIXES = {
+  openrouter: 'OPENROUTER_API_KEYS=',
+  nvidia: 'NVIDIA_API_KEYS=',
+  gemini: 'GEMINI_API_KEYS='
+};
+
+// ponytail: parse .env once at boot; cache invalidated only on restart. Caller controls which provider.
+let cachedEnv = null;
+function readEnvKeys(provider) {
+  if (!cachedEnv) {
+    cachedEnv = {};
+    const envPath = path.join(__dirname, '.env');
+    if (fs.existsSync(envPath)) {
+      const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+      let currentPrefix = null;
+      for (let line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const matchedPrefix = Object.values(ENV_PREFIXES).find(p => trimmed.startsWith(p));
+        if (matchedPrefix) {
+          currentPrefix = matchedPrefix;
+          const val = trimmed.substring(matchedPrefix.length).trim();
+          if (val) {
+            cachedEnv[matchedPrefix] = val.split(',').map(k => k.trim()).filter(Boolean);
+          } else {
+            cachedEnv[matchedPrefix] = [];
+          }
+        } else if (currentPrefix && !trimmed.includes('=')) {
+          cachedEnv[currentPrefix].push(...trimmed.split(',').map(k => k.trim()).filter(Boolean));
+        } else if (trimmed.includes('=')) {
+          currentPrefix = null;
+        }
+      }
+    }
+    for (const p of Object.values(ENV_PREFIXES)) {
+      if (!cachedEnv[p]) cachedEnv[p] = [];
+    }
+  }
+  return cachedEnv[ENV_PREFIXES[provider]] || [];
+}
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -109,6 +150,12 @@ async function handleRequest(req, res) {
     return;
   }
 
+  if (urlPath === '/api/env-keys' && req.method === 'GET') {
+    const provider = (new URL(req.url, 'http://x')).searchParams.get('provider') || 'openrouter';
+    sendJson(res, 200, { keys: readEnvKeys(provider) });
+    return;
+  }
+
   if (urlPath === '/api/proxy/chat' && req.method === 'POST') {
     try {
       const raw = await readBody(req);
@@ -131,25 +178,34 @@ async function handleRequest(req, res) {
     return;
   }
 
-  let filePath = path.join(__dirname, urlPath === '/' ? 'index.html' : urlPath);
-
-  if (!filePath.startsWith(__dirname)) {
+  const BLOCKED_PATHS = ['/.env', '/candidate.md', '/interviewer.md'];
+  if (BLOCKED_PATHS.includes(urlPath)) {
     res.writeHead(403);
     res.end('Forbidden');
     return;
   }
 
-  fs.stat(filePath, (err, stats) => {
+  // ponytail: decode %2e%2e BEFORE path.resolve, otherwise the bounds check is bypassable
+  const decoded = decodeURIComponent(urlPath);
+  const safePath = decoded.replace(/^[/\\]+/, '') || 'index.html';
+  const resolved = path.resolve(__dirname, safePath);
+  if (!resolved.startsWith(__dirname + path.sep) && resolved !== __dirname) {
+    res.writeHead(403);
+    res.end('Forbidden');
+    return;
+  }
+
+  fs.stat(resolved, (err, stats) => {
     if (err || !stats.isFile()) {
       res.writeHead(404);
       res.end('Not Found');
       return;
     }
 
-    const ext = path.extname(filePath).toLowerCase();
+    const ext = path.extname(resolved).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': contentType });
-    fs.createReadStream(filePath).pipe(res);
+    res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-store' });
+    fs.createReadStream(resolved).pipe(res);
   });
 }
 

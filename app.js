@@ -1,5 +1,5 @@
 import { techDrills, defaultScenarios } from './scenarios.js';
-import { marked } from 'https://esm.run/marked';
+const marked = window.marked;
 
 const PROVIDER_CONFIG = {
   openrouter: {
@@ -144,36 +144,15 @@ apiProviderSelect.addEventListener('change', (e) => {
 
 async function loadEnvKeys() {
   apiKeys = [];
-  const keyPrefix = PROVIDER_CONFIG[activeProvider].envPrefix;
-
   try {
-    const response = await fetch('./.env');
+    const response = await fetch(`./api/env-keys?provider=${encodeURIComponent(activeProvider)}`);
     if (response.ok) {
-      const text = await response.text();
-      const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-      let collecting = false;
-      for (let line of lines) {
-        if (line.startsWith(keyPrefix)) {
-          collecting = true;
-          const val = line.substring(line.indexOf('=') + 1).trim();
-          if (val) {
-            apiKeys = val.split(',').map(k => k.trim()).filter(k => k);
-            collecting = false;
-          }
-          continue;
-        }
-        if (collecting) {
-          if (line.includes('=')) {
-            collecting = false;
-          } else if (!line.startsWith('#')) {
-            apiKeys.push(line);
-          }
-        }
-      }
+      const data = await response.json();
+      apiKeys = Array.isArray(data.keys) ? data.keys : [];
       console.log(`Cargadas ${apiKeys.length} claves API para ${activeProvider} desde .env`);
     }
   } catch (e) {
-    console.log('No se pudo cargar el archivo .env automáticamente:', e);
+    console.log('No se pudo cargar .env automáticamente:', e);
   }
 
   const manual = getManualKey().trim();
@@ -181,6 +160,14 @@ async function loadEnvKeys() {
     apiKeys = [manual, ...apiKeys.filter(k => k !== manual)];
   }
 
+  currentKeyIndex = 0;
+  updateUI();
+}
+
+function reloadManualKey() {
+  // ponytail: keystrokes don't re-hit /api/env-keys; only the manual override is updated
+  const manual = getManualKey().trim();
+  apiKeys = manual ? [manual, ...apiKeys.filter(k => k !== manual)] : apiKeys.filter(k => k !== manual);
   currentKeyIndex = 0;
   updateUI();
 }
@@ -284,7 +271,7 @@ document.querySelectorAll('.nav-item').forEach(button => {
 // Settings events
 apiKeyInput.addEventListener('input', (e) => {
   setManualKey(e.target.value.trim());
-  loadEnvKeys();
+  reloadManualKey();
 });
 
 handbookUpload.addEventListener('change', (e) => {

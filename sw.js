@@ -9,7 +9,8 @@ const PRECACHE = [
   './logo.png',
   './manifest.webmanifest',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './vendor/marked.min.js'
 ];
 
 self.addEventListener('install', (event) => {
