@@ -6,7 +6,7 @@ Guía para quien contribuya (humano o asistente de IA) a TrainerExpert.
 
 - Frases cortas. Máximo 8–10 palabras por bullet si aplica.
 - Sin rodeos ni preámbulos.
-- Sin emojis ni guiones largos en docs/commits salvo que el usuario lo pida.
+- Sin emojis ni guiones largos en docs/commits salvo que se pida.
 
 ## Git y secretos
 
@@ -18,8 +18,6 @@ Guía para quien contribuya (humano o asistente de IA) a TrainerExpert.
 
 - Diff mínimo: reutilizar patrones existentes en `app.js` y `server.js`.
 - Sin dependencias nuevas si el estándar o Node ya cubren el caso.
-- UI y textos de la app en español neutro.
-- Comentarios solo para lógica no obvia; el código debe leerse solo.
 
 ## IA y proveedores
 
@@ -28,5 +26,4 @@ Guía para quien contribuya (humano o asistente de IA) a TrainerExpert.
 
 ## Documentación
 
-- README en español, orientado a quien clona el repo por primera vez.
 - Cualquier variable de entorno nueva → `.env.example` + README.
