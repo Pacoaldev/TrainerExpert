@@ -1,6 +1,7 @@
 certs/
 .gemini/
 .agents/
+.atl/
 .git/
 /handbooks/*
 !/handbooks/handbook.example.md
