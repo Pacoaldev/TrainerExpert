@@ -7,3 +7,8 @@ certs/
 .env
 candidate.md
 interviewer.md
+
+# bypasser-ai
+.bypasser.json
+.bypasser.log
+.bypasser.state.json
