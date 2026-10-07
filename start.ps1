@@ -8,7 +8,7 @@ if (-not (Test-Path $pfx)) {
 }
 
 # Liberar puertos si quedaron colgados
-foreach ($port in 8080, 8443) {
+foreach ($port in 7890, 7891) {
   $conns = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
   if ($conns) {
     $conns | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object {
@@ -20,6 +20,6 @@ Start-Sleep -Seconds 1
 
 Start-Process -FilePath "cmd.exe" -ArgumentList "/c node server.js" -WorkingDirectory $projectDir -WindowStyle Hidden
 Start-Sleep -Seconds 3
-Start-Process "http://localhost:8080"
-Write-Host "PC:  http://localhost:8080"
-Write-Host "Movil (MIC): https://<tu-IP>:8443  (acepta el aviso del certificado)"
+Start-Process "http://localhost:7890"
+Write-Host "PC:  http://localhost:7890"
+Write-Host "Movil (MIC): https://<tu-IP>:7891  (acepta el aviso del certificado)"

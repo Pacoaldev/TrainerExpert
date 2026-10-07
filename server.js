@@ -3,8 +3,8 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 8080;
-const HTTPS_PORT = 8443;
+const PORT = 7890;
+const HTTPS_PORT = 7891;
 const PFX_PATH = path.join(__dirname, 'certs', 'dev.pfx');
 const PFX_PASS = 'trainerexpert';
 
