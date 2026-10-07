@@ -4,6 +4,7 @@ certs/
 .atl/
 .engram/
 .git/
+/entrevistas/*
 /handbooks/*
 !/handbooks/handbook.example.md
 .env
