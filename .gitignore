@@ -15,3 +15,4 @@ interviewer.md
 .bypasser.json
 .bypasser.log
 .bypasser.state.json
+*.bak
