@@ -178,7 +178,7 @@ async function handleRequest(req, res) {
     return;
   }
 
-  const BLOCKED_PATHS = ['/.env', '/candidate.md', '/interviewer.md'];
+  const BLOCKED_PATHS = ['/.env'];
   if (BLOCKED_PATHS.includes(urlPath)) {
     res.writeHead(403);
     res.end('Forbidden');

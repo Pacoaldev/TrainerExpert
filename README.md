@@ -142,7 +142,7 @@ TrainerExpert/
 Mejoras de seguridad y rendimiento aplicadas al servidor y la app:
 
 - **Path traversal corregido en `server.js`** — la validación anterior con `startsWith(__dirname)` era vulnerable a `..` URL‑encoded. Ahora se decodifica la URL, se resuelve con `path.resolve` y se verifica que el resultado sigue dentro del directorio del proyecto.
-- **Archivos sensibles bloqueados** — `/.env`, `/candidate.md` e `/interviewer.md` devuelven `403`. Las claves ya no se sirven por HTTP plano.
+- **Archivos sensibles bloqueados** — `/.env` devuelve `403`. Las claves ya no se sirven por HTTP plano.
 - **Lectura del `.env` desde el backend** — nuevo endpoint `GET /api/env-keys?provider=X` que parsea el `.env` una sola vez al arrancar (cache en memoria) y devuelve solo el array de claves del proveedor solicitado. El navegador deja de hacer `fetch('./.env')`.
 - **Caché HTTP deshabilitada** — todas las respuestas estáticas llevan `Cache-Control: no-store` para evitar que el navegador o el service worker retengan claves o perfiles.
 - **Mejor rendimiento al escribir la API key** — antes, cada pulsación de tecla disparaba un `fetch` al `.env` y lo re‑parseaba. Ahora solo se actualiza el override manual.

@@ -185,7 +185,6 @@ function rotateApiKey() {
   return false;
 }
 
-// Action for manual load
 loadHandbookPathBtn.addEventListener('click', async () => {
   let filename = handbookPathInput.value.trim();
   if (!filename) return;
@@ -210,7 +209,6 @@ loadHandbookPathBtn.addEventListener('click', async () => {
   }
 });
 
-// Load default profiles on start
 async function loadDefaultProfiles() {
   try {
     const respC = await fetch('./candidate.md');
@@ -235,15 +233,23 @@ async function loadDefaultProfiles() {
   } catch (e) {
     console.log('No se pudo auto-cargar interviewer.md');
   }
+
+  updateUI();
 }
 
-// Load default handbook
+const reloadProfilesBtn = document.getElementById('reloadProfilesBtn');
+if (reloadProfilesBtn) {
+  reloadProfilesBtn.addEventListener('click', async () => {
+    await loadDefaultProfiles();
+  });
+}
+
 async function loadDefaultHandbook() {
   const defaultFile = 'handbook.example.md';
   try {
-    const response = await fetch(`./handbooks/${defaultFile}`);
-    if (response.ok) {
-      activeHandbookContent = await response.text();
+    const res = await fetch(`./handbooks/${defaultFile}`);
+    if (res.ok) {
+      activeHandbookContent = await res.text();
       activeHandbookName = defaultFile;
       activeHandbookTitle.textContent = defaultFile;
       console.log('Default handbook cargado de forma correcta.');
@@ -256,7 +262,6 @@ async function loadDefaultHandbook() {
   updateUI();
 }
 
-// Navigation logic
 document.querySelectorAll('.nav-item').forEach(button => {
   button.addEventListener('click', () => {
     document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
@@ -268,7 +273,6 @@ document.querySelectorAll('.nav-item').forEach(button => {
   });
 });
 
-// Settings events
 apiKeyInput.addEventListener('input', (e) => {
   setManualKey(e.target.value.trim());
   reloadManualKey();
@@ -709,6 +713,13 @@ function updateUI() {
   // Handbook Active States
   activeHandbookTitle.textContent = activeHandbookName !== 'Ninguno' ? activeHandbookName : 'Sin Cargar';
   document.getElementById('uploadedFileName').textContent = activeHandbookName;
+  const handbookBadge = document.querySelector('.card-primary .stats-badge');
+  if (handbookBadge) {
+    const loaded = activeHandbookName && activeHandbookName !== 'Ninguno' && activeHandbookName !== 'Sin Cargar';
+    handbookBadge.textContent = loaded ? 'Handbook activo' : 'Carga un Handbook';
+    handbookBadge.style.background = loaded ? 'rgba(16, 185, 129, 0.2)' : '';
+    handbookBadge.style.color = loaded ? '#10b981' : '';
+  }
 
   // Profiles Status
   const candidateStatus = document.getElementById('candidateProfileStatus');
@@ -769,6 +780,7 @@ const sidebarBackdrop = document.getElementById('sidebarBackdrop');
 
 function isMobileLayout() {
   return window.matchMedia('(max-width: 768px)').matches;
+
 }
 
 function hideSidebar() {
